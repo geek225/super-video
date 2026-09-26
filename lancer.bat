@@ -34,6 +34,14 @@ if not exist ".env" (
     copy .env.example .env
 )
 
+REM Creation automatique des raccourcis avec la belle icone violette
+if not exist "%USERPROFILE%\Desktop\Super Video AI.lnk" (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $desktop = [System.Environment]::GetFolderPath('Desktop'); $s = $ws.CreateShortcut((Join-Path $desktop 'Super Video AI.lnk')); $s.TargetPath = 'wscript.exe'; $s.Arguments = '\"' + (Get-Location).Path + '\Super Video AI.vbs\"'; $s.WorkingDirectory = (Get-Location).Path; $s.IconLocation = (Get-Location).Path + '\app_icon.ico,0'; $s.Description = 'Super Video AI Studio'; $s.Save()" >nul 2>nul
+)
+if not exist "Super Video AI.lnk" (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut((Join-Path (Get-Location).Path 'Super Video AI.lnk')); $s.TargetPath = 'wscript.exe'; $s.Arguments = '\"' + (Get-Location).Path + '\Super Video AI.vbs\"'; $s.WorkingDirectory = (Get-Location).Path; $s.IconLocation = (Get-Location).Path + '\app_icon.ico,0'; $s.Description = 'Super Video AI Studio'; $s.Save()" >nul 2>nul
+)
+
 start "" http://127.0.0.1:7860
 
 echo ==========================================================
