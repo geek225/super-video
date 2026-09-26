@@ -91,42 +91,74 @@ def get_image_dimensions_and_optimal_preset(file_path: Path) -> Dict[str, Any]:
 
 def upload_to_public_host(file_path: Path) -> str:
     """
-    Option 1 : Héberge automatiquement et temporairement l'image locale (Litterbox/Catbox)
-    afin de générer l'URL publique requise par les serveurs d'Agnes AI.
-    Durée de rétention principale : 24h (garantit la validité durant toute la session).
-    Bascule automatique sur serveur secondaire en cas d'indisponibilité temporaire.
+    Héberge automatiquement et de façon fiable l'image locale sur un CDN public
+    afin que les serveurs de rendu d'IA puissent télécharger l'image sans blocage ni coupure réseau.
+    Architecture multi-niveaux à tolérance de panne :
+    1. CDN FreeImage (iili.io) : haute disponibilité et liens directs sans WAF bloquant
+    2. CDN Uguu : relai rapide direct
+    3. Litterbox / Catbox : repli supplémentaire
     """
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
     
-    # 1. Tentative primaire : Litterbox (durée 24h - hébergement stable pour API IA)
+    # 1. Tentative Tier 1 : FreeImage CDN (iili.io direct image)
+    try:
+        with open(file_path, "rb") as f:
+            data = {
+                "key": "6d207e02198a847aa98d0a2a901485a5",
+                "action": "upload",
+                "format": "json"
+            }
+            files = {"source": (file_path.name, f)}
+            resp = requests.post("https://freeimage.host/api/1/upload", data=data, files=files, headers=headers, timeout=20)
+            if resp.status_code == 200:
+                res_json = resp.json()
+                img_url = res_json.get("image", {}).get("url")
+                if img_url and img_url.startswith("http"):
+                    return img_url
+    except Exception:
+        pass
+
+    # 2. Tentative Tier 2 : Uguu CDN
+    try:
+        with open(file_path, "rb") as f:
+            files = {"files[]": (file_path.name, f)}
+            resp = requests.post("https://uguu.se/upload.php", files=files, headers=headers, timeout=20)
+            if resp.status_code == 200:
+                res_json = resp.json()
+                if "files" in res_json and len(res_json["files"]) > 0:
+                    u_url = res_json["files"][0].get("url")
+                    if u_url and u_url.startswith("http"):
+                        return u_url
+    except Exception:
+        pass
+
+    # 3. Tentative Tier 3 : Litterbox
     try:
         url_litterbox = "https://litterbox.catbox.moe/resources/internals/api.php"
         with open(file_path, "rb") as f:
             files = {"fileToUpload": (file_path.name, f)}
             data = {"reqtype": "fileupload", "time": "24h"}
-            resp = requests.post(url_litterbox, files=files, data=data, headers=headers, timeout=25)
-            
-        if resp.status_code == 200 and resp.text.startswith("http"):
-            return resp.text.strip()
-    except requests.RequestException:
-        pass  # Bascule sur le service secondaire
-        
-    # 2. Tentative secondaire de secours : Catbox direct
+            resp = requests.post(url_litterbox, files=files, data=data, headers=headers, timeout=20)
+            if resp.status_code == 200 and resp.text.startswith("http"):
+                return resp.text.strip()
+    except Exception:
+        pass
+
+    # 4. Tentative Tier 4 : Catbox
     try:
         url_catbox = "https://catbox.moe/user/api.php"
         with open(file_path, "rb") as f:
             files = {"fileToUpload": (file_path.name, f)}
             data = {"reqtype": "fileupload"}
-            resp = requests.post(url_catbox, files=files, data=data, headers=headers, timeout=25)
-            
-        if resp.status_code == 200 and resp.text.startswith("http"):
-            return resp.text.strip()
-        else:
-            raise ImageBridgeError(f"Échec de l'hébergement temporaire : {resp.text}")
-    except requests.RequestException as e:
-        raise ImageBridgeError(f"Erreur réseau lors de la mise en ligne temporaire de l'image : {str(e)}")
+            resp = requests.post(url_catbox, files=files, data=data, headers=headers, timeout=20)
+            if resp.status_code == 200 and resp.text.startswith("http"):
+                return resp.text.strip()
+    except Exception:
+        pass
+
+    raise ImageBridgeError("Impossible d'obtenir une URL CDN publique pour l'image. Vérifiez votre connexion Internet.")
 
 def process_image(file_bytes: bytes, original_filename: str) -> Dict[str, Any]:
     """Traite l'image locale, extrait ses dimensions et génère l'URL publique nécessaire à Agnes AI."""
