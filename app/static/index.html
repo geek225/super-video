@@ -356,7 +356,7 @@
     </div>
 
     <!-- COLONNE DROITE : LECTEUR & HISTORIQUE (6 colonnes) -->
-    <div class="lg:col-span-6 xl:col-span-6 flex flex-col gap-5">
+    <div class="lg:col-span-6 xl:col-span-6 flex flex-col gap-5 lg:sticky lg:top-20 self-start">
       
       <!-- Carte Lecteur Vidéo Principal -->
       <div class="bg-brand-card/90 border border-brand-border/70 rounded-2xl p-5 shadow-xl backdrop-blur-sm flex flex-col">
@@ -374,20 +374,20 @@
         </div>
 
         <!-- Zone du Lecteur / Placeholder Adaptatif -->
-        <div class="relative w-full min-h-[380px] max-h-[500px] h-[440px] rounded-xl overflow-hidden bg-black/80 border border-brand-border/80 flex items-center justify-center">
+        <div id="playerContainer" class="relative w-full min-h-[360px] sm:min-h-[440px] max-h-[620px] rounded-2xl overflow-hidden bg-slate-950/95 border border-brand-border/80 flex items-center justify-center p-1 sm:p-2 shadow-inner transition-all duration-300">
           
-          <!-- Lecteur Vidéo natif -->
-          <video id="videoPlayer" class="w-full h-full object-contain hidden" controls autoplay loop playsinline></video>
+          <!-- Lecteur Vidéo natif (100% de la vidéo visible avec object-contain) -->
+          <video id="videoPlayer" class="max-w-full max-h-[580px] w-auto h-auto object-contain rounded-xl mx-auto hidden shadow-2xl" controls autoplay loop playsinline></video>
 
-          <!-- Placeholder avant génération -->
-          <div id="playerPlaceholder" class="flex flex-col items-center gap-3 text-slate-500 p-6 text-center">
-            <div class="w-14 h-14 rounded-2xl bg-brand-border/40 flex items-center justify-center text-slate-400">
+          <!-- Placeholder avant génération (Positionné en absolute pour ne JAMAIS s'afficher à côté de la vidéo) -->
+          <div id="playerPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-slate-500 p-6 text-center z-10 bg-slate-950/90 pointer-events-none transition-opacity duration-200">
+            <div class="w-14 h-14 rounded-2xl bg-brand-border/40 flex items-center justify-center text-slate-400 shadow-md">
               <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
               </svg>
             </div>
-            <p class="text-sm font-medium">Votre vidéo s'affichera ici une fois générée</p>
-            <p class="text-xs text-slate-500 max-w-xs">Chargez une image et lancez la génération pour voir la magie opérer en local.</p>
+            <p class="text-sm font-semibold text-slate-300">Votre vidéo s'affichera ici une fois générée</p>
+            <p class="text-xs text-slate-500 max-w-xs leading-relaxed">Chargez un visuel et lancez le rendu pour voir l'animation complète en haute définition.</p>
           </div>
 
           <!-- Overlay de Génération en cours -->

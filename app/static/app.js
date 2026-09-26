@@ -22,6 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnGenerate = document.getElementById("btnGenerate");
   const generateBtnText = document.getElementById("generateBtnText");
 
+  const playerContainer = document.getElementById("playerContainer");
   const videoPlayer = document.getElementById("videoPlayer");
   const playerPlaceholder = document.getElementById("playerPlaceholder");
   const processingOverlay = document.getElementById("processingOverlay");
@@ -621,6 +622,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showCompletedVideo(videoUrl, filename) {
     processingOverlay.classList.add("hidden");
+    playerPlaceholder.classList.add("hidden");
     videoPlayer.src = videoUrl;
     videoPlayer.classList.remove("hidden");
     videoPlayer.load();
@@ -638,6 +640,23 @@ document.addEventListener("DOMContentLoaded", () => {
     playerBadge.textContent = "Terminé ✓";
     playerBadge.className = "text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium";
   }
+
+  // Ajustement dynamique de hauteur selon le ratio réel de la vidéo chargée
+  videoPlayer.addEventListener("loadedmetadata", () => {
+    if (videoPlayer.videoWidth && videoPlayer.videoHeight && playerContainer) {
+      const ratio = videoPlayer.videoWidth / videoPlayer.videoHeight;
+      if (ratio < 0.75) {
+        // Vidéo verticale 9:16 (format TikTok / Reel)
+        playerContainer.style.minHeight = "480px";
+      } else if (ratio > 1.45) {
+        // Format panoramique 16:9
+        playerContainer.style.minHeight = "340px";
+      } else {
+        // Format carré 1:1 ou 3:4 / 4:3
+        playerContainer.style.minHeight = "420px";
+      }
+    }
+  });
 
   function finishProcessing(success) {
     btnGenerate.disabled = false;
