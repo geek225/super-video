@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Video - Local Studio</title>
+  <!-- Tailwind CSS Auto-hébergé localement -->
+  <script src="/static/tailwind.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              purple: '#8B5CF6',
+              violet: '#7C3AED',
+              cyan: '#06B6D4',
+              dark: '#0D0D12',
+              card: '#16161F',
+              border: '#272738'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="bg-brand-dark text-slate-200 min-h-screen flex flex-col font-['Plus_Jakarta_Sans',sans-serif] selection:bg-brand-purple/30 selection:text-white">
+
+  <!-- Barre supérieure de statut -->
+  <header class="h-16 border-b border-brand-border/60 bg-brand-dark/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-violet to-brand-cyan flex items-center justify-center shadow-lg shadow-brand-violet/25">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="font-bold text-lg text-white tracking-wide flex items-center gap-2">
+          SUPER VIDEO AI <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-semibold">Moteur Gratuit Actif ($0/sec)</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- Actions / Clé API & Mises à jour -->
+    <div class="flex items-center gap-2.5">
+      <!-- Cloche / Bouton Mise à jour GitHub -->
+      <button id="btnOpenUpdates" class="relative p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-brand-card hover:bg-slate-800 border border-brand-border transition-all flex items-center gap-1.5 text-slate-300 hover:text-white group" title="Vérifier les mises à jour sur GitHub">
+        <svg class="w-4 h-4 text-slate-300 group-hover:text-brand-purple transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+        </svg>
+        <span class="hidden sm:inline">Mises à jour</span>
+        <span id="updateNotificationDot" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border-2 border-brand-dark animate-pulse"></span>
+      </button>
+
+      <button id="btnOpenSettings" class="px-4 py-2 rounded-xl text-xs font-semibold bg-brand-card hover:bg-slate-800 border border-brand-border transition-all flex items-center gap-2 text-slate-300 hover:text-white">
+        <span id="apiKeyDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+        <span id="apiKeyText">Clé Studio</span>
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Contenu Principal -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- COLONNE GAUCHE : STUDIO & CONTRÔLES (7 colonnes) -->
+    <div class="lg:col-span-6 xl:col-span-6 flex flex-col gap-5">
+
+      <!-- Upload Zone Visuel -->
+      <div class="bg-brand-card/90 border border-brand-border/70 rounded-2xl p-5 shadow-xl backdrop-blur-sm">
+        <div class="flex items-center justify-between mb-3">
+          <label class="text-sm font-bold text-white flex items-center gap-2">
+            <span>Visuel Source</span>
+            <span class="text-xs text-slate-400 font-normal">(PNG, JPG, WebP jusqu'à 15 Mo)</span>
+          </label>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/20 font-medium">
+              Option 1 : Bridge Auto 24h
+            </span>
+            <span id="uploadBadge" class="text-xs text-emerald-400 hidden font-medium flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Prête
+            </span>
+          </div>
+        </div>
+
+        <div id="dropZone" class="relative group cursor-pointer border-2 border-dashed border-brand-border/80 hover:border-brand-purple/70 rounded-xl p-4 transition-all duration-200 bg-slate-900/40 hover:bg-slate-900/70 text-center flex flex-col items-center justify-center min-h-[190px]">
+          <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" class="absolute inset-0 opacity-0 cursor-pointer z-10">
+
+          <!-- État Vide -->
+          <div id="uploadEmptyState" class="flex flex-col items-center gap-2">
+            <div class="w-12 h-12 rounded-full bg-brand-purple/10 text-brand-purple flex items-center justify-center group-hover:scale-110 transition-transform">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <p class="text-sm font-semibold text-slate-200">Glissez-déposez votre visuel ici</p>
+            <p class="text-xs text-slate-400">ou cliquez pour parcourir vos fichiers</p>
+          </div>
+
+          <!-- État avec Image Chargée -->
+          <div id="uploadPreviewState" class="hidden w-full flex items-center gap-4 text-left z-20">
+            <div class="relative w-28 h-28 rounded-lg overflow-hidden border border-brand-border bg-black/40 flex-shrink-0">
+              <img id="imagePreview" src="" alt="Aperçu" class="w-full h-full object-cover">
+            </div>
+            <div class="flex-1 min-w-0">
+              <p id="imageFilename" class="text-sm font-semibold text-white truncate"></p>
+              <p id="imageFileSize" class="text-xs text-slate-400 mt-0.5"></p>
+              <div class="mt-2 flex items-center gap-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Prêt pour l'animation
+                </span>
+                <button type="button" id="btnRemoveImage" class="text-xs text-rose-400 hover:text-rose-300 hover:underline">
+                  Remplacer
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Indicateur d'uploading -->
+          <div id="uploadLoadingState" class="hidden flex flex-col items-center gap-2">
+            <div class="w-7 h-7 border-2 border-brand-purple border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-xs text-slate-300">Préparation & transit de l'image...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Paramètres de Génération -->
+        <!-- Sélecteur Principal de Mode : Motion Design vs Cinématique -->
+        <div class="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-slate-900/90 border border-brand-border">
+          <button type="button" id="tabModeMotion" class="mode-tab-btn active py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-gradient-to-r from-brand-violet to-brand-purple text-white shadow-md shadow-brand-violet/25">
+            <span class="text-sm">🎨</span>
+            <span>Motion Design Affiche</span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-300 font-semibold border border-emerald-400/30">100% Fidèle</span>
+          </button>
+          <button type="button" id="tabModeCinema" class="mode-tab-btn py-2.5 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 text-slate-400 hover:text-white hover:bg-slate-800/60">
+            <span class="text-sm">🎬</span>
+            <span>Vidéo Libre Cinéma</span>
+          </button>
+        </div>
+
+        <!-- PANNEAU 1 : STUDIO MOTION DESIGN GUIDÉ (Par défaut) -->
+        <div id="panelMotionDesign" class="space-y-4">
+          <!-- Bannière explicative -->
+          <div class="p-3 rounded-xl bg-brand-purple/10 border border-brand-purple/30 text-xs text-slate-300 flex items-start gap-2.5">
+            <span class="text-base leading-none">🛡️</span>
+            <div>
+              <p class="font-bold text-white text-[12px]">Verrouillage Graphique Actif (Anti-Morphing & Anti-Dérive)</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Les visages, tenues, logos et éléments du visuel restent 100% identiques. Le système compile vos choix en un prompt optimisé pour animer l'atmosphère.</p>
+            </div>
+          </div>
+
+          <!-- 1. Stabilité des Personnages & Sujets -->
+          <div>
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-1.5 flex items-center justify-between">
+              <span>1. Stabilité des Personnages</span>
+              <span class="text-[10px] text-brand-cyan font-normal">Zéro changement de pose</span>
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" id="characterLockContainer">
+              <label class="motion-radio-label cursor-pointer p-2.5 rounded-xl border border-brand-purple/70 bg-brand-purple/20 transition-all flex flex-col gap-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-white flex items-center gap-1">🔒 Statue 2.5D</span>
+                  <input type="radio" name="char_lock" value="statue_25d" checked class="accent-brand-purple">
+                </div>
+                <p class="text-[10px] text-slate-300 leading-tight">Poses 100% figées, le décor et la lumière s'animent en relief</p>
+              </label>
+
+              <label class="motion-radio-label cursor-pointer p-2.5 rounded-xl border border-brand-border bg-slate-900/60 hover:border-brand-purple/50 transition-all flex flex-col gap-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-white flex items-center gap-1">🫁 Respiration</span>
+                  <input type="radio" name="char_lock" value="micro_breathing" class="accent-brand-purple">
+                </div>
+                <p class="text-[10px] text-slate-400 leading-tight">Léger souffle organique et micro-vie sur place</p>
+              </label>
+
+              <label class="motion-radio-label cursor-pointer p-2.5 rounded-xl border border-brand-border bg-slate-900/60 hover:border-brand-purple/50 transition-all flex flex-col gap-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-white flex items-center gap-1">✨ Micro-regard</span>
+                  <input type="radio" name="char_lock" value="subtle_motion" class="accent-brand-purple">
+                </div>
+                <p class="text-[10px] text-slate-400 leading-tight">Clignement doux des yeux, micro-mouvements de tête</p>
+              </label>
+            </div>
+          </div>
+
+          <!-- 2. Effets Graphiques & Ambiance Décor (Cochables en 1 clic) -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-xs font-bold uppercase tracking-wider text-slate-300">2. Effets Motion & Ambiance Décor</label>
+              <span class="text-[10px] text-slate-400">Cumulables</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5" id="fxChipsContainer">
+              <label class="fx-chip-label cursor-pointer select-none p-2 rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 hover:bg-brand-cyan/20 transition-all flex items-center gap-2">
+                <input type="checkbox" id="fxShine" checked class="accent-brand-cyan">
+                <span class="text-xs text-white font-medium">🏆 Reflets Trophée</span>
+              </label>
+              <label class="fx-chip-label cursor-pointer select-none p-2 rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 hover:bg-brand-cyan/20 transition-all flex items-center gap-2">
+                <input type="checkbox" id="fxConfetti" checked class="accent-brand-cyan">
+                <span class="text-xs text-white font-medium">🎆 Confettis Stade</span>
+              </label>
+              <label class="fx-chip-label cursor-pointer select-none p-2 rounded-xl border border-brand-border bg-slate-900/50 hover:bg-slate-800 transition-all flex items-center gap-2">
+                <input type="checkbox" id="fxLights" class="accent-brand-cyan">
+                <span class="text-xs text-slate-300 font-medium">💡 Projecteurs Studio</span>
+              </label>
+              <label class="fx-chip-label cursor-pointer select-none p-2 rounded-xl border border-brand-border bg-slate-900/50 hover:bg-slate-800 transition-all flex items-center gap-2">
+                <input type="checkbox" id="fxSmoke" class="accent-brand-cyan">
+                <span class="text-xs text-slate-300 font-medium">🌫️ Fumée & Brume</span>
+              </label>
+              <label class="fx-chip-label cursor-pointer select-none p-2 rounded-xl border border-brand-border bg-slate-900/50 hover:bg-slate-800 transition-all flex items-center gap-2">
+                <input type="checkbox" id="fxWind" class="accent-brand-cyan">
+                <span class="text-xs text-slate-300 font-medium">💨 Vent Tissus & Drapeaux</span>
+              </label>
+              <label class="fx-chip-label cursor-pointer select-none p-2 rounded-xl border border-brand-border bg-slate-900/50 hover:bg-slate-800 transition-all flex items-center gap-2">
+                <input type="checkbox" id="fxSparks" class="accent-brand-cyan">
+                <span class="text-xs text-slate-300 font-medium">⚡ Étincelles d'Énergie</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 3. Mouvement de Caméra -->
+          <div>
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-1.5">3. Mouvement de Caméra</label>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5" id="cameraSelector">
+              <button type="button" data-camera="push_in" class="camera-btn active p-2 rounded-xl border border-brand-purple bg-brand-purple/20 text-white text-xs font-semibold flex items-center justify-center gap-1">
+                <span>🔍 Zoom Avant</span>
+              </button>
+              <button type="button" data-camera="parallax_drift" class="camera-btn p-2 rounded-xl border border-brand-border bg-slate-900/60 text-slate-300 text-xs font-semibold flex items-center justify-center gap-1 hover:bg-slate-800">
+                <span>📐 Parallaxe 3D</span>
+              </button>
+              <button type="button" data-camera="pan_horizontal" class="camera-btn p-2 rounded-xl border border-brand-border bg-slate-900/60 text-slate-300 text-xs font-semibold flex items-center justify-center gap-1 hover:bg-slate-800">
+                <span>↔️ Travelling Pan</span>
+              </button>
+              <button type="button" data-camera="static" class="camera-btn p-2 rounded-xl border border-brand-border bg-slate-900/60 text-slate-300 text-xs font-semibold flex items-center justify-center gap-1 hover:bg-slate-800">
+                <span>⏹️ Caméra Fixe</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 4. Consigne Complémentaire Libre (Optionnelle) -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold uppercase tracking-wider text-slate-300">4. Précision / Détail libre (Facultatif)</label>
+              <span class="text-[10px] text-slate-400">Optionnel</span>
+            </div>
+            <input type="text" id="motionDetailInput" placeholder="Ex: reflets dorés chauds, fumée orange subtile en arrière-plan..." class="w-full rounded-xl bg-slate-900/80 border border-brand-border/80 focus:border-brand-purple text-xs text-slate-100 p-2.5 placeholder:text-slate-500 outline-none transition-all">
+          </div>
+        </div>
+
+        <!-- PANNEAU 2 : MODE CINÉMATIQUE LIBRE (Pour créer un film avec libertés) -->
+        <div id="panelCinemaMode" class="hidden space-y-3">
+          <div class="p-3 rounded-xl bg-brand-cyan/10 border border-brand-cyan/30 text-xs text-slate-300 flex items-start gap-2.5">
+            <span class="text-base leading-none">🎬</span>
+            <div>
+              <p class="font-bold text-white text-[12px]">Mode Génération Libre (Scène de Film)</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Donne à l'IA carte blanche pour inventer des mouvements complets, actions et déplacements de caméras à partir de votre image.</p>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold uppercase tracking-wider text-slate-300">Prompt Cinématique Libre</label>
+              <span class="text-[11px] text-slate-400">Description libre de l'action</span>
+            </div>
+            <textarea id="cinemaPromptInput" rows="3" placeholder="Ex: Un zoom cinématique lent, vent fort dans les cheveux, la caméra tourne autour des personnages..." class="w-full rounded-xl bg-slate-900/80 border border-brand-border/80 focus:border-brand-purple focus:ring-1 focus:ring-brand-purple text-sm text-slate-100 p-3 placeholder:text-slate-500 outline-none transition-all resize-none"></textarea>
+          </div>
+          <!-- Presets Cinéma -->
+          <div class="flex flex-wrap gap-1.5 items-center">
+            <span class="text-[11px] text-slate-400 font-medium mr-1">Presets cinéma :</span>
+            <button type="button" class="preset-pill border-brand-cyan/40 text-brand-cyan" data-cinema="Un travelling avant lent et cinématique avec une lumière dorée et un mouvement fluide des éléments.">Cinematic Zoom</button>
+            <button type="button" class="preset-pill" data-cinema="Mouvement de respiration subtil et organique, flottement très doux du sujet.">Subtle Breathing</button>
+            <button type="button" class="preset-pill" data-cinema="Un vent délicat anime les cheveux et les éléments du décor de façon réaliste.">Wind Effect</button>
+          </div>
+        </div>
+
+        <!-- Durée & Ratio -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-brand-border/50">
+          
+          <!-- Durée -->
+          <div>
+            <div class="flex justify-between items-center mb-1.5">
+              <label class="text-xs font-bold uppercase tracking-wider text-slate-300">Durée</label>
+              <span id="durationValue" class="text-xs font-bold text-brand-cyan">5.0s</span>
+            </div>
+            <input type="range" id="durationSlider" min="4" max="12" step="1" value="5" class="w-full accent-brand-purple bg-slate-900 h-2 rounded-lg cursor-pointer">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+              <span>4s</span>
+              <span>8s</span>
+              <span>12s</span>
+            </div>
+          </div>
+
+          <!-- Format / Aspect Ratio -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-xs font-bold uppercase tracking-wider text-slate-300">Format Cadrage</label>
+              <span id="ratioAutoBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/25">Auto-Détection Active</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5" id="ratioSelector">
+              <button type="button" data-ratio="original" class="ratio-btn active col-span-3 text-brand-cyan font-bold border-brand-cyan/40 bg-brand-cyan/10">
+                📐 Original (Auto-Cadrage Sans Coupure)
+              </button>
+              <button type="button" data-ratio="1:1" class="ratio-btn">1:1 Carré</button>
+              <button type="button" data-ratio="3:4" class="ratio-btn">3:4 Affiche</button>
+              <button type="button" data-ratio="9:16" class="ratio-btn">9:16 Story</button>
+              <button type="button" data-ratio="4:3" class="ratio-btn">4:3 Standard</button>
+              <button type="button" data-ratio="16:9" class="ratio-btn col-span-2">16:9 Cinéma / YouTube</button>
+            </div>
+            <p id="ratioDetectedInfo" class="text-[11px] text-brand-cyan/90 mt-1.5 hidden items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span id="ratioDetectedText">Format optimal détecté</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Options Avancées (Modèle, Résolution) -->
+        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-brand-border/50">
+          <div>
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-1 flex items-center justify-between">
+              <span>Modèle</span>
+              <span class="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">100% Gratuit</span>
+            </label>
+            <select id="modelSelect" class="w-full bg-slate-900 border border-brand-border rounded-lg text-xs p-2 text-slate-200 outline-none">
+              <option value="agnes-video-v2.0" selected>Super Video Engine v2.0 (Standard HD - Inclus)</option>
+              <option value="agnes-video-2.5" disabled>Super Video Engine Ultra 2.5 (Pro 4K - Bientôt)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-300 block mb-1">Qualité</label>
+            <select id="sizeSelect" class="w-full bg-slate-900 border border-brand-border rounded-lg text-xs p-2 text-slate-200 outline-none">
+              <option value="720P">720P (Standard & fluide)</option>
+              <option value="1080P">1080P (Haute définition)</option>
+              <option value="1K">1K (Carré 1024x1024)</option>
+              <option value="2K">2K (Ultra qualité)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Bouton Générer -->
+        <button id="btnGenerate" class="mt-2 w-full py-3.5 px-6 rounded-xl font-bold text-sm tracking-wide text-white bg-gradient-to-r from-brand-violet to-brand-cyan hover:opacity-95 shadow-lg shadow-brand-violet/30 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span id="generateBtnText">Générer la vidéo</span>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- COLONNE DROITE : LECTEUR & HISTORIQUE (6 colonnes) -->
+    <div class="lg:col-span-6 xl:col-span-6 flex flex-col gap-5">
+      
+      <!-- Carte Lecteur Vidéo Principal -->
+      <div class="bg-brand-card/90 border border-brand-border/70 rounded-2xl p-5 shadow-xl backdrop-blur-sm flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <span>Rendu Vidéo</span>
+            <span id="playerBadge" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-normal">En attente</span>
+          </h2>
+          <a id="btnDownload" href="#" download class="hidden text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center gap-1.5 shadow-md shadow-emerald-900/30">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Télécharger (MP4)
+          </a>
+        </div>
+
+        <!-- Zone du Lecteur / Placeholder Adaptatif -->
+        <div class="relative w-full min-h-[380px] max-h-[500px] h-[440px] rounded-xl overflow-hidden bg-black/80 border border-brand-border/80 flex items-center justify-center">
+          
+          <!-- Lecteur Vidéo natif -->
+          <video id="videoPlayer" class="w-full h-full object-contain hidden" controls autoplay loop playsinline></video>
+
+          <!-- Placeholder avant génération -->
+          <div id="playerPlaceholder" class="flex flex-col items-center gap-3 text-slate-500 p-6 text-center">
+            <div class="w-14 h-14 rounded-2xl bg-brand-border/40 flex items-center justify-center text-slate-400">
+              <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
+              </svg>
+            </div>
+            <p class="text-sm font-medium">Votre vidéo s'affichera ici une fois générée</p>
+            <p class="text-xs text-slate-500 max-w-xs">Chargez une image et lancez la génération pour voir la magie opérer en local.</p>
+          </div>
+
+          <!-- Overlay de Génération en cours -->
+          <div id="processingOverlay" class="hidden absolute inset-0 bg-brand-dark/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20">
+            <div class="relative w-16 h-16 mb-4">
+              <div class="w-16 h-16 rounded-full border-4 border-brand-border border-t-brand-purple animate-spin"></div>
+              <div class="absolute inset-0 flex items-center justify-center text-xs font-bold text-brand-cyan" id="progressPercentageText">
+                0%
+              </div>
+            </div>
+            <h3 class="text-base font-bold text-white mb-1" id="processTitle">Génération en cours...</h3>
+            <p class="text-xs text-slate-400 max-w-sm mb-4" id="processStatus">Initialisation du moteur Super Video AI...</p>
+            
+            <!-- Barre de progression -->
+            <div class="w-full max-w-xs bg-slate-900 h-2.5 rounded-full overflow-hidden border border-brand-border">
+              <div id="progressBarFill" class="h-full bg-gradient-to-r from-brand-violet to-brand-cyan transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Information de fichier local -->
+        <div id="fileInfoBox" class="hidden mt-3 p-3 rounded-xl bg-slate-900/60 border border-brand-border/60 text-xs flex items-center justify-between text-slate-300">
+          <div class="flex items-center gap-2 truncate">
+            <span class="text-emerald-400 font-semibold">✓ Enregistré localement :</span>
+            <span id="savedPathLabel" class="font-mono text-slate-400 truncate"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Galerie des Créations Récentes -->
+      <div class="bg-brand-card/90 border border-brand-border/70 rounded-2xl p-5 shadow-xl backdrop-blur-sm flex-1 flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span>Créations Récentes</span>
+            <span class="text-xs text-slate-400 font-normal">Dossier `outputs/`</span>
+          </h3>
+          <button id="btnRefreshHistory" class="text-xs text-slate-400 hover:text-white transition-colors">
+            Actualiser
+          </button>
+        </div>
+
+        <div id="historyGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto max-h-[220px] pr-1">
+          <!-- Injecté dynamiquement par JavaScript -->
+          <div class="col-span-full py-8 text-center text-slate-500 text-xs">
+            Aucune vidéo générée pour le moment.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MODAL PARAMÈTRES / CLÉ API -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-brand-card border border-brand-border rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-base text-white flex items-center gap-2">
+          <span>Activation & Moteur Super Video AI</span>
+        </h3>
+        <button id="btnCloseSettings" class="text-slate-400 hover:text-white text-lg leading-none">&times;</button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs font-semibold text-slate-300 block mb-1.5">Moteur Cloud de Rendu</label>
+          <select id="selectProvider" class="w-full bg-slate-900 border border-brand-border rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-brand-purple mb-2">
+            <option value="https://apihub.agnes-ai.com/v1">Super Video AI Cloud (Officiel & Recommandé)</option>
+            <option value="custom">Serveur Personnalisé (Compatible OpenAI Videos)</option>
+          </select>
+          <div id="customUrlContainer" class="hidden mb-2">
+            <label class="text-xs font-semibold text-slate-400 block mb-1">URL du serveur de rendu</label>
+            <input type="text" id="inputBaseUrl" placeholder="https://api.votre-serveur.com/v1" class="w-full bg-slate-900 border border-brand-border rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-brand-purple">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-300 block mb-1.5">Clé d'Activation Studio (API Key)</label>
+          <input type="password" id="inputApiKey" placeholder="ex: sk-..." class="w-full bg-slate-900 border border-brand-border rounded-xl p-3 text-sm text-slate-200 outline-none focus:border-brand-purple">
+          <p class="text-[11px] text-slate-400 mt-1.5">
+            Votre clé est enregistrée localement dans le fichier <code class="text-brand-cyan">.env</code> et n'est jamais partagée ni exposée en clair.
+          </p>
+        </div>
+
+        <div id="apiKeyAlert" class="hidden p-3 rounded-xl text-xs"></div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" id="btnCancelSettings" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-slate-800">
+            Fermer
+          </button>
+          <button type="button" id="btnSaveApiKey" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-brand-violet hover:bg-brand-purple transition-all shadow-md shadow-brand-violet/30">
+            Enregistrer la clé Studio
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL MISES À JOUR (GITHUB) -->
+  <div id="updateModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-brand-card border border-brand-border rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-base text-white flex items-center gap-2">
+          <svg class="w-5 h-5 text-brand-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          <span>Mise à jour logicielle</span>
+        </h3>
+        <button id="btnCloseUpdateModal" class="text-slate-400 hover:text-white text-lg leading-none">&times;</button>
+      </div>
+
+      <!-- Spinner chargement vérification -->
+      <div id="updateCheckLoading" class="py-6 text-center space-y-3">
+        <div class="w-8 h-8 rounded-full border-2 border-brand-border border-t-brand-purple animate-spin mx-auto"></div>
+        <p class="text-xs text-slate-400">Vérification des mises à jour sur GitHub...</p>
+      </div>
+
+      <!-- Contenu de la mise à jour -->
+      <div id="updateContent" class="hidden space-y-4">
+        <!-- Bannière d'état -->
+        <div id="updateStatusBanner" class="p-3.5 rounded-xl border flex items-start gap-3 bg-slate-900/60 border-brand-border">
+          <div id="updateStatusIcon" class="mt-0.5 text-base">ℹ️</div>
+          <div>
+            <h4 id="updateStatusTitle" class="text-xs font-bold text-white">Vérification terminée</h4>
+            <p id="updateStatusDesc" class="text-[11px] text-slate-400 mt-0.5">Votre version actuelle est à jour.</p>
+          </div>
+        </div>
+
+        <!-- Détails des versions -->
+        <div class="bg-slate-900/80 border border-brand-border/60 rounded-xl p-3 text-xs space-y-2">
+          <div class="flex justify-between items-center text-slate-400">
+            <span>Version installée :</span>
+            <span id="currentVersionTag" class="font-mono text-slate-200 bg-slate-800 px-2 py-0.5 rounded">v1.0</span>
+          </div>
+          <div class="flex justify-between items-center text-slate-400">
+            <span>Dernière version sur GitHub :</span>
+            <span id="latestVersionTag" class="font-mono text-brand-cyan bg-brand-cyan/10 px-2 py-0.5 rounded">...</span>
+          </div>
+          <div id="updateMessageContainer" class="pt-2 border-t border-brand-border/40 text-slate-300 hidden">
+            <span class="text-[11px] text-slate-400 block mb-1">Dernières nouveautés :</span>
+            <p id="updateCommitMsg" class="italic text-slate-200 text-xs break-words"></p>
+          </div>
+        </div>
+
+        <!-- Barre de progression pour l'installation -->
+        <div id="updateProgressBox" class="hidden space-y-2 pt-2">
+          <div class="flex justify-between text-xs text-slate-400">
+            <span id="updateProgressLabel">Téléchargement et installation des fichiers...</span>
+          </div>
+          <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-brand-border">
+            <div id="updateProgressBar" class="h-full bg-gradient-to-r from-brand-violet to-brand-cyan animate-pulse" style="width: 100%"></div>
+          </div>
+        </div>
+
+        <!-- Boutons d'action -->
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" id="btnCancelUpdate" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-slate-800">
+            Fermer
+          </button>
+          <button type="button" id="btnApplyUpdate" class="hidden px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-brand-violet to-brand-purple hover:opacity-95 transition-all shadow-md shadow-brand-violet/30 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            <span>Installer la mise à jour</span>
+          </button>
+          <button type="button" id="btnRecheckUpdate" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 transition-all">
+            Revérifier
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

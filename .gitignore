@@ -1,0 +1,28 @@
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Secrets & Environment variables
+.env
+*.env.local
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Media & User uploads/outputs
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+
+# Security scan reports
+security-reports/
+
+# OS specific
+.DS_Store
+Thumbs.db
