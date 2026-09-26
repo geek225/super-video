@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Lanceur natif macOS pour Super Video AI
+# Exécution directe et silencieuse en tâche de fond (sans fenêtre de terminal)
+# ==============================================================================
+
+# Résolution absolue du dossier parent de l'application
+BUNDLE_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+APP_DIR="$(cd "$BUNDLE_DIR/.." && pwd)"
+cd "$APP_DIR"
+
+# 1. Vérification et initialisation de l'environnement virtuel Python
+if [ ! -d ".venv" ]; then
+    python3 -m venv .venv
+    "$APP_DIR/.venv/bin/pip" install -r requirements.txt
+fi
+
+# 2. Synchronisation automatique silencieuse depuis GitHub
+if [ -d ".git" ]; then
+    git pull origin main --quiet 2>/dev/null || true
+fi
+
+# 3. Création du fichier .env à partir de l'exemple si absent
+if [ ! -f ".env" ]; then
+    cp .env.example .env
+fi
+
+# 4. Ouverture automatique du navigateur dès que le serveur est prêt
+(
+    sleep 2
+    open "http://127.0.0.1:7860"
+) &
+
+# 5. Démarrage du serveur uvicorn
+exec "$APP_DIR/.venv/bin/python" -m uvicorn app.main:app --host 127.0.0.1 --port 7860

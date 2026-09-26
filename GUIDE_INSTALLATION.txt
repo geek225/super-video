@@ -38,26 +38,28 @@ officiel).
 ================================================================================
 ÉTAPE 3 : LANCER LE LOGICIEL (EN 1 SEUL CLIC)
 ================================================================================
-Ouvrez le dossier "super video" et double-cliquez sur le fichier correspondant
-à votre ordinateur :
-
-🪟 VOUS ÊTES SUR WINDOWS :
--------------------------
-👉 Double-cliquez sur le fichier :  lancer.bat
-   - Une fenêtre noire va s'ouvrir et préparer automatiquement l'application.
-   - Au premier lancement, cela peut prendre 1 à 2 minutes (le temps de tout
-     préparer).
-   - Votre navigateur Internet va s'ouvrir tout seul sur l'interface du studio.
+Ouvrez le dossier "super video" et cliquez sur le lanceur avec son icône :
 
 🍏 VOUS ÊTES SUR MAC :
 ---------------------
-👉 Double-cliquez sur le fichier :  lancer.command
-   - Votre Mac peut parfois afficher un message de sécurité ("Fichier non approuvé").
-     Si cela arrive, pas de panique, c'est normal pour un logiciel téléchargé :
-     1. Faites un CLIC DROIT sur "lancer.command".
-     2. Cliquez sur "Ouvrir".
-     3. Confirmez en cliquant sur "Ouvrir" dans la petite fenêtre d'alerte.
+👉 Double-cliquez directement sur l'application : "Super Video AI" (avec la belle icône violette)
+   - L'application démarre directement et discrètement en arrière-plan (sans
+     aucune fenêtre noire de terminal).
    - Votre navigateur Internet s'ouvrira tout seul sur l'interface du studio.
+   - Astuce : Vous pouvez même glisser cette icône "Super Video AI" dans votre
+     dossier Applications ou dans votre Dock en bas de l'écran !
+
+   *(Note de premier lancement : Si votre Mac affiche "Développeur non vérifié",
+   faites simplement un CLIC DROIT sur "Super Video AI" > "Ouvrir" > confirmer "Ouvrir").*
+
+🪟 VOUS ÊTES SUR WINDOWS :
+-------------------------
+👉 Double-cliquez sur : "Super Video AI.vbs" (ou sur "lancer.bat")
+   - Tout démarre en tâche de fond de façon discrète et automatique.
+   - Votre navigateur Internet va s'ouvrir tout seul sur l'interface du studio.
+   - Pour avoir l'icône directement sur votre Bureau : double-cliquez une fois
+     sur "Creer_Raccourci_Bureau.bat". Un joli raccourci "Super Video AI" avec
+     son icône violette apparaîtra immédiatement sur votre Bureau !
 
 ================================================================================
 ÉTAPE 4 : ACTIVER VOTRE CLÉ STUDIO ET COMMENCER
