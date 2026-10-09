@@ -92,3 +92,10 @@
   height: 100%;
   object-fit: cover;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  #startupSplash,
+  #splashProgressBar {
+    transition: none !important;
+  }
+}

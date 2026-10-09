@@ -39,7 +39,10 @@ app.add_middleware(
 
 # Montage des dossiers statiques et de stockage
 STATIC_DIR = Path(__file__).parent / "static"
+PUBLIC_DIR = BASE_DIR / "public"
+PUBLIC_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+app.mount("/public", StaticFiles(directory=str(PUBLIC_DIR)), name="public")
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 app.mount("/outputs", StaticFiles(directory=str(OUTPUTS_DIR)), name="outputs")
 

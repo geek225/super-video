@@ -33,6 +33,56 @@
 </head>
 <body class="bg-brand-dark text-slate-200 min-h-screen flex flex-col font-['Plus_Jakarta_Sans',sans-serif] selection:bg-brand-purple/30 selection:text-white">
 
+  <!-- ÉCRAN DE DÉMARRAGE (SPLASH SCREEN SIGNÉ) -->
+  <div id="startupSplash" class="fixed inset-0 z-[100] bg-[#07070C] flex flex-col items-center justify-center p-6 transition-all duration-700 opacity-100">
+    <!-- Halo lumineux d'arrière-plan -->
+    <div class="absolute w-96 h-96 rounded-full bg-gradient-to-tr from-brand-violet/25 to-brand-cyan/20 blur-3xl pointer-events-none"></div>
+
+    <div class="relative z-10 flex flex-col items-center text-center max-w-md w-full bg-brand-card/90 border border-brand-border/80 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
+      <!-- Logo & Titre App -->
+      <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-slate-900/90 border border-brand-border text-[11px] font-bold tracking-widest uppercase text-brand-cyan mb-6 shadow-inner">
+        <span class="w-2 h-2 rounded-full bg-brand-cyan animate-ping"></span>
+        <span>SUPER VIDEO AI • STUDIO DESKTOP</span>
+      </div>
+
+      <!-- Photo de Stéphane Kevin Assamoi -->
+      <div class="relative mb-5 group">
+        <div class="absolute -inset-1.5 rounded-full bg-gradient-to-tr from-brand-violet via-brand-purple to-brand-cyan opacity-85 blur-md group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div class="relative w-36 h-36 sm:w-40 sm:h-40 rounded-full p-1 bg-gradient-to-tr from-brand-violet via-brand-purple to-brand-cyan shadow-2xl">
+          <img
+            src="/public/asset/kevin.png"
+            alt="Stéphane Kevin Assamoi"
+            fetchpriority="high"
+            class="w-full h-full rounded-full object-cover object-center border-2 border-[#07070C]"
+          />
+        </div>
+      </div>
+
+      <!-- Signature en dessous de la photo -->
+      <p class="text-sm sm:text-base font-medium text-slate-300 tracking-wide">
+        Vibe coder par <span class="font-extrabold text-white bg-gradient-to-r from-white via-purple-200 to-brand-cyan bg-clip-text text-transparent">Stéphane Kevin Assamoi</span>
+      </p>
+
+      <!-- Fonction en dessous du nom -->
+      <p class="mt-1.5 text-xs sm:text-sm font-bold text-brand-cyan tracking-wide px-3.5 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/25">
+        Référent Digital &amp; AI Product Builder
+      </p>
+
+      <!-- Barre de chargement du démarrage -->
+      <div class="w-full mt-7 space-y-2">
+        <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-brand-border/60">
+          <div id="splashProgressBar" class="h-full bg-gradient-to-r from-brand-violet via-brand-purple to-brand-cyan transition-all duration-300 ease-out" style="width: 15%"></div>
+        </div>
+        <p id="splashStatusText" class="text-[11px] text-slate-400 font-medium">Initialisation du moteur Super Video AI...</p>
+      </div>
+
+      <!-- Bouton d'accès direct -->
+      <button id="btnSkipSplash" type="button" class="mt-4 text-[11px] font-semibold text-slate-400 hover:text-white transition-colors underline-offset-4 hover:underline">
+        Accéder au Studio →
+      </button>
+    </div>
+  </div>
+
   <!-- Barre supérieure de statut -->
   <header class="h-16 border-b border-brand-border/60 bg-brand-dark/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
     <div class="flex items-center gap-3">
@@ -48,8 +98,17 @@
       </div>
     </div>
 
-    <!-- Actions / Clé API & Mises à jour -->
+    <!-- Actions / Signature / Clé API & Mises à jour -->
     <div class="flex items-center gap-2.5">
+      <!-- Badge Signature Créateur (cliquable pour revoir le Splash Screen) -->
+      <button id="btnCreatorBadge" type="button" class="hidden md:flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-xl bg-brand-card/90 hover:bg-slate-800 border border-brand-border/80 transition-all text-left group" title="Afficher la signature du créateur">
+        <img src="/public/asset/kevin.png" alt="Stéphane Kevin Assamoi" class="w-7 h-7 rounded-full object-cover border border-brand-purple/60 group-hover:scale-105 transition-transform" />
+        <div class="leading-tight">
+          <div class="text-[10px] font-bold text-white">Stéphane Kevin Assamoi</div>
+          <div class="text-[9px] text-brand-cyan font-medium">Référent Digital &amp; AI Product Builder</div>
+        </div>
+      </button>
+
       <!-- Cloche / Bouton Mise à jour GitHub -->
       <button id="btnOpenUpdates" class="relative p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-brand-card hover:bg-slate-800 border border-brand-border transition-all flex items-center gap-1.5 text-slate-300 hover:text-white group" title="Vérifier les mises à jour sur GitHub">
         <svg class="w-4 h-4 text-slate-300 group-hover:text-brand-purple transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">

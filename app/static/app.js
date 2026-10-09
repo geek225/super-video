@@ -91,6 +91,55 @@ document.addEventListener("DOMContentLoaded", () => {
   let detectedImagePreset = null;
   let activeEventSource = null;
 
+  // Éléments de l'écran de démarrage (Splash Screen signé)
+  const startupSplash = document.getElementById("startupSplash");
+  const splashProgressBar = document.getElementById("splashProgressBar");
+  const splashStatusText = document.getElementById("splashStatusText");
+  const btnSkipSplash = document.getElementById("btnSkipSplash");
+  const btnCreatorBadge = document.getElementById("btnCreatorBadge");
+
+  function hideStartupSplash() {
+    if (!startupSplash) return;
+    startupSplash.classList.add("opacity-0", "pointer-events-none");
+    setTimeout(() => {
+      startupSplash.classList.add("hidden");
+    }, 700);
+  }
+
+  function showStartupSplash() {
+    if (!startupSplash) return;
+    startupSplash.classList.remove("hidden");
+    requestAnimationFrame(() => {
+      startupSplash.classList.remove("opacity-0", "pointer-events-none");
+    });
+    if (splashProgressBar) splashProgressBar.style.width = "100%";
+    if (splashStatusText) splashStatusText.textContent = "Studio Motion & Vidéo IA actif ✓";
+  }
+
+  if (startupSplash) {
+    setTimeout(() => {
+      if (splashProgressBar) splashProgressBar.style.width = "60%";
+      if (splashStatusText) splashStatusText.textContent = "Chargement du Studio Motion Design & Vidéo...";
+    }, 700);
+
+    setTimeout(() => {
+      if (splashProgressBar) splashProgressBar.style.width = "100%";
+      if (splashStatusText) splashStatusText.textContent = "Prêt ! Bienvenue dans Super Video AI.";
+    }, 1800);
+
+    setTimeout(() => {
+      hideStartupSplash();
+    }, 3000);
+  }
+
+  if (btnSkipSplash) {
+    btnSkipSplash.addEventListener("click", hideStartupSplash);
+  }
+
+  if (btnCreatorBadge) {
+    btnCreatorBadge.addEventListener("click", showStartupSplash);
+  }
+
   // 1. Initialisation : vérifier la clé API et charger l'historique
   checkApiKeyStatus();
   loadHistory();
