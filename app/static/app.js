@@ -824,9 +824,10 @@ document.addEventListener("DOMContentLoaded", () => {
           finishProcessing(false);
         } else if (info.status === "in_progress") {
           const prog = Math.max(20, info.progress || 35);
-          updateProgress(prog, `Calcul et rendu vidéo en cours (${prog}%)...`);
+          updateProgress(prog, info.queue_message || `Calcul et rendu vidéo en cours (${prog}%)...`);
         } else if (info.status === "queued") {
-          updateProgress(10, "En file d'attente sur les serveurs de rendu Super Video AI...");
+          const qProg = Math.max(10, info.progress || 12);
+          updateProgress(qProg, info.queue_message || "En file d'attente sur les serveurs de rendu Super Video AI...");
         }
       } catch (e) {
         console.error("Erreur parsing SSE:", e);

@@ -233,7 +233,8 @@ async def stream_task_progress(video_id: str, model: str = "studio-v2.0"):
                     "status": status,
                     "progress": progress,
                     "seconds": result.get("seconds"),
-                    "size": result.get("size")
+                    "size": result.get("size"),
+                    "queue_message": result.get("queue_message"),
                 }
 
                 if status == "completed":

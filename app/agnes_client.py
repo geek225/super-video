@@ -1,10 +1,11 @@
 import base64
 import json
 import time
+import uuid
 import urllib.parse
 import requests
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 from app.config import (
     BASE_DIR,
     UPLOADS_DIR,
@@ -18,6 +19,8 @@ from app.security_vault import (
     get_default_base_url,
     get_default_query_url,
     get_default_model_id,
+    get_legacy_model_id,
+    sanitize_provider_text,
     resolve_candidate_keys,
     register_task_key,
     get_task_key,
@@ -25,10 +28,14 @@ from app.security_vault import (
     consume_shared_quota,
 )
 
+# File d'attente intelligente en mémoire lorsque les serveurs gratuits sont momentanément pleins
+_PENDING_AUTOQUEUE: Dict[str, Dict[str, Any]] = {}
+
 
 class AgnesAPIError(Exception):
     def __init__(self, message: str, status_code: Optional[int] = None, details: Optional[Any] = None):
-        super().__init__(message)
+        clean_msg = sanitize_provider_text(message)
+        super().__init__(clean_msg)
         self.status_code = status_code
         self.details = details
 
@@ -36,7 +43,7 @@ class AgnesAPIError(Exception):
 class AgnesClient:
     """
     Adaptateur Vidéo IA Universel Multi-Moteurs :
-    - Super Video AI Cloud (Pool Gratuit 5 clés en rotation + Failover)
+    - Super Video AI Cloud (Pool Gratuit 5 clés en rotation + File d'attente intelligente anti-503)
     - Google Veo 3 / Veo 2 (Google AI Studio / Gemini API directe sans Google Flow)
     - OpenAI Sora 2 / Sora Pro (API OpenAI Videos)
     - Kling AI (Kling 2.0 Master / 1.6 Image-to-Video)
@@ -84,7 +91,6 @@ class AgnesClient:
         if not image_url:
             return None
         try:
-            # Chercher d'abord le dernier fichier dans uploads/ si disponible
             recent_uploads = sorted(UPLOADS_DIR.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)
             for up in recent_uploads:
                 if up.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
@@ -181,7 +187,7 @@ class AgnesClient:
 
         if "error" in data:
             err_msg = data["error"].get("message", str(data["error"]))
-            return {"video_id": video_id, "status": "failed", "error": {"message": err_msg}}
+            return {"video_id": video_id, "status": "failed", "error": {"message": sanitize_provider_text(err_msg)}}
 
         resp_obj = data.get("response", {})
         samples = (
@@ -285,10 +291,145 @@ class AgnesClient:
                 "progress": 100,
                 "resolved_url": video_url,
             }
-        return {"video_id": video_id, "status": "failed", "error": {"message": str(s_data)}}
+        return {"video_id": video_id, "status": "failed", "error": {"message": sanitize_provider_text(str(s_data))}}
 
     # =========================================================================
-    # CRÉATION & SUIVI DE TÂCHE PRINCIPALE (Pool Super Video AI + Sora/Kling/Higgsfield/Custom)
+    # CONSTRUCTION DU PAYLOAD POUR LE SERVEUR PAR DÉFAUT OU COMPATIBLE /v1/videos
+    # =========================================================================
+    def _build_video_payload(
+        self,
+        active_model: str,
+        final_prompt: str,
+        neg_prompt: str,
+        image_url: Optional[str],
+        mode: str,
+        seconds: str,
+        size: str,
+        aspect_ratio: str,
+        target_width: Optional[int],
+        target_height: Optional[int],
+        seed: Optional[int],
+    ) -> Dict[str, Any]:
+        legacy_model = get_legacy_model_id()
+
+        # Déterminer le ratio explicite (1:1, 3:4, 4:3, 9:16, 16:9) à partir des dimensions si "original"
+        resolved_ar = aspect_ratio
+        if resolved_ar == "original":
+            if target_width and target_height:
+                r = float(target_width) / float(target_height)
+                if r >= 1.55:
+                    resolved_ar = "16:9"
+                elif r >= 1.15:
+                    resolved_ar = "4:3"
+                elif r >= 0.85:
+                    resolved_ar = "1:1"
+                elif r >= 0.65:
+                    resolved_ar = "3:4"
+                else:
+                    resolved_ar = "9:16"
+            else:
+                resolved_ar = "1:1"
+
+        if active_model == legacy_model:
+            sec_float = float(seconds) if seconds else 5.0
+            approx_frames = int(sec_float * 24)
+            n = max(10, (approx_frames - 1) // 8)
+            num_frames = min(441, 8 * n + 1)
+
+            if target_width and target_height:
+                width, height = int(target_width), int(target_height)
+            elif resolved_ar == "1:1":
+                width, height = 960, 960
+            elif resolved_ar == "3:4":
+                width, height = 832, 1088
+            elif resolved_ar == "4:3":
+                width, height = 1088, 832
+            elif resolved_ar == "9:16":
+                width, height = 704, 1280
+            else:
+                width, height = 1280, 704
+
+            payload: Dict[str, Any] = {
+                "model": legacy_model,
+                "prompt": final_prompt,
+                "image": image_url,
+                "height": height,
+                "width": width,
+                "num_frames": num_frames,
+                "frame_rate": 24,
+                "negative_prompt": neg_prompt,
+            }
+        else:
+            # Format standard 2.5-flash / Sora / Kling / Higgsfield
+            sec_int = int(round(float(seconds or 5)))
+            clean_sec = "10" if sec_int >= 8 else "5"
+            payload = {
+                "model": active_model,
+                "prompt": final_prompt,
+                "mode": mode or "keyframe",
+                "seconds": clean_sec,
+                "size": size if size in ("720P", "1080P") else "720P",
+                "aspect_ratio": resolved_ar,
+            }
+            if image_url:
+                if mode == "reference":
+                    payload["images"] = [image_url]
+                else:
+                    payload["first_frame"] = image_url
+
+        if seed is not None:
+            payload["seed"] = seed
+        return payload
+
+    def _try_submit_once(
+        self,
+        endpoint: str,
+        candidate_key: str,
+        payload: Dict[str, Any],
+        is_default_server: bool,
+        is_shared_pool: bool,
+    ) -> Tuple[Optional[Dict[str, Any]], int, str, str]:
+        """Tente un appel POST unique. Retourne (data_si_succès, status_code, error_code, error_msg)."""
+        try:
+            response = requests.post(
+                endpoint,
+                headers=self._build_headers(candidate_key),
+                json=payload,
+                timeout=60,
+            )
+        except requests.RequestException as e:
+            return None, 503, "network_error", sanitize_provider_text(str(e))
+
+        if response.status_code in (200, 201, 202):
+            data = response.json()
+            vid = data.get("video_id") or data.get("task_id") or data.get("id")
+            if vid:
+                if not is_default_server:
+                    vid = f"custom_op::{vid}"
+                    data["video_id"] = vid
+                register_task_key(str(vid), candidate_key)
+                data["used_model"] = payload.get("model", "")
+            if is_shared_pool:
+                consume_shared_quota(BASE_DIR)
+            return data, 200, "", ""
+
+        err_code = ""
+        err_msg = ""
+        try:
+            err_data = response.json()
+            err_code = err_data.get("code") or (err_data.get("error") or {}).get("code") or ""
+            err_msg = (
+                err_data.get("message")
+                or (err_data.get("error") or {}).get("message")
+                or str(err_data)
+            )
+        except Exception:
+            err_msg = response.text or f"Erreur HTTP {response.status_code}"
+
+        return None, response.status_code, str(err_code), sanitize_provider_text(str(err_msg))
+
+    # =========================================================================
+    # CRÉATION & SUIVI DE TÂCHE PRINCIPALE
     # =========================================================================
     def create_video_task(
         self,
@@ -306,8 +447,6 @@ class AgnesClient:
     ) -> Dict[str, Any]:
         final_prompt, neg_prompt = self._compile_prompts(prompt, motion_design_mode)
         user_key = (self.api_key or get_user_api_key()).strip()
-
-        # Détection automatique d'un moteur externe (Google Veo, Fal.ai, Sora, Kling, Higgsfield, Serveur Personnalisé)
         is_default_server = (self.base_url == get_default_base_url()) and (self.provider_mode in ("", "default"))
 
         # Cas 1 : Google Veo (Clé AIza... ou mode google_veo)
@@ -316,7 +455,7 @@ class AgnesClient:
                 raise AgnesAPIError("Veuillez renseigner votre clé API Google AI Studio (AIza...) dans 'Clé Studio'.", status_code=401)
             return self._create_google_veo_task(user_key, final_prompt, image_url, model, seconds, aspect_ratio)
 
-        # Cas 2 : Fal.ai Multi-Modèles (Veo 3, Kling 2.0, Runway, Luma, Hailuo)
+        # Cas 2 : Fal.ai Multi-Modèles
         if self.provider_mode == "fal_ai" or "fal.run" in self.base_url:
             if not user_key:
                 raise AgnesAPIError("Veuillez renseigner votre clé API Fal.ai dans 'Clé Studio'.", status_code=401)
@@ -324,6 +463,8 @@ class AgnesClient:
 
         # Cas 3 : Pool Officiel Super Video AI ou Serveurs /v1/videos (Sora 2, Kling, Higgsfield, Hub Custom)
         default_model = get_default_model_id()
+        legacy_model = get_legacy_model_id()
+
         if not is_default_server:
             default_map = {
                 "openai_sora": "sora-2",
@@ -337,8 +478,12 @@ class AgnesClient:
             )
             if not active_model or active_model in ("default", "studio-v2.0"):
                 active_model = "sora-2"
+            models_to_try = [active_model]
         else:
-            active_model = default_model if model in ("", "default", "studio-v2.0") else model
+            if model in ("", "default", "studio-v2.0"):
+                models_to_try = [default_model, legacy_model]
+            else:
+                models_to_try = [model, default_model]
 
         endpoint = f"{self.base_url}/videos"
 
@@ -350,7 +495,7 @@ class AgnesClient:
 
         if not candidates:
             raise AgnesAPIError(
-                "Aucune clé d'activation disponible pour ce serveur. Veuillez renseigner votre clé dans 'Clé Studio'.",
+                "Aucune clé d'activation disponible pour ce serveur. Veuillez renseigner votre clé dans 'Studio Actif'.",
                 status_code=401,
             )
 
@@ -359,108 +504,168 @@ class AgnesClient:
             if used_today >= limit_today:
                 raise AgnesAPIError(
                     f"Quota gratuit journalier atteint ({limit_today}/{limit_today} vidéos aujourd'hui sur le Pool partagé). "
-                    "Revenez demain ou renseignez votre propre Clé Studio personnelle (ou un serveur externe Veo3/Sora/Kling) pour générer en illimité !",
+                    "Revenez demain ou connectez votre propre Clé / Serveur (Veo 3, Sora, Kling, Fal.ai) pour générer en illimité !",
                     status_code=429,
                 )
 
-        if active_model == default_model and is_default_server:
-            sec_float = float(seconds) if seconds else 5.0
-            approx_frames = int(sec_float * 24)
-            n = max(10, (approx_frames - 1) // 8)
-            num_frames = min(441, 8 * n + 1)
+        # Première tentative immédiate avec la première clé candidate et le modèle principal (2.5-flash)
+        first_key = candidates[0]
+        primary_payload = self._build_video_payload(
+            models_to_try[0],
+            final_prompt,
+            neg_prompt,
+            image_url,
+            mode,
+            seconds,
+            size,
+            aspect_ratio,
+            target_width,
+            target_height,
+            seed,
+        )
+        ok_data, status_code, err_code, err_msg = self._try_submit_once(
+            endpoint, first_key, primary_payload, is_default_server, is_shared_pool
+        )
+        if ok_data is not None:
+            return ok_data
 
-            if target_width and target_height:
-                width, height = int(target_width), int(target_height)
-            elif aspect_ratio == "1:1":
-                width, height = 960, 960
-            elif aspect_ratio == "3:4":
-                width, height = 832, 1088
-            elif aspect_ratio == "4:3":
-                width, height = 1088, 832
-            elif aspect_ratio == "9:16":
-                width, height = 704, 1280
-            elif aspect_ratio == "16:9":
-                width, height = 1280, 704
-            else:
-                width, height = 960, 960
-
-            payload: Dict[str, Any] = {
-                "model": default_model,
-                "prompt": final_prompt,
-                "image": image_url,
-                "height": height,
-                "width": width,
-                "num_frames": num_frames,
-                "frame_rate": 24,
-                "negative_prompt": neg_prompt,
-            }
-        else:
-            payload = {
-                "model": active_model,
-                "prompt": final_prompt,
+        # Si sur le serveur par défaut la file d'attente GPU gratuite est momentanément pleine (video_queue_full / 503 / 429),
+        # on place automatiquement la tâche dans la File d'Attente Intelligente (Smart Auto-Queue) au lieu d'afficher une erreur 503 !
+        if is_default_server and status_code in (429, 500, 502, 503, 504):
+            queue_id = f"autoqueue::{uuid.uuid4().hex[:12]}"
+            _PENDING_AUTOQUEUE[queue_id] = {
+                "created_at": time.time(),
+                "last_try_at": time.time(),
+                "attempts": 1,
+                "key_idx": 1 % len(candidates),
+                "candidates": candidates,
+                "is_shared_pool": is_shared_pool,
+                "endpoint": endpoint,
+                "models_to_try": models_to_try,
+                "final_prompt": final_prompt,
+                "neg_prompt": neg_prompt,
+                "image_url": image_url,
                 "mode": mode,
-                "seconds": str(seconds),
+                "seconds": seconds,
                 "size": size,
-                "aspect_ratio": "16:9" if aspect_ratio == "original" else aspect_ratio,
+                "aspect_ratio": aspect_ratio,
+                "target_width": target_width,
+                "target_height": target_height,
+                "seed": seed,
+                "remote_video_id": None,
+                "remote_model": models_to_try[0],
+                "last_reason": err_code or "queue_busy",
             }
-            if image_url:
-                payload["image"] = image_url
-                payload["image_url"] = image_url
-                if mode == "keyframe":
-                    payload["first_frame"] = image_url
-                elif mode == "reference":
-                    payload["images"] = [image_url]
+            return {
+                "video_id": queue_id,
+                "status": "queued",
+                "model": models_to_try[0],
+            }
 
-        if seed is not None:
-            payload["seed"] = seed
+        raise AgnesAPIError(f"Échec de génération ({status_code}) : {err_msg}", status_code=status_code)
 
-        last_error_msg = "Service temporairement saturé."
-        last_status = 500
+    def _poll_autoqueue_task(self, queue_id: str) -> Dict[str, Any]:
+        """Gère la file d'attente intelligente : réessaie automatiquement toutes les 16s jusqu'à obtenir un GPU libre."""
+        job = _PENDING_AUTOQUEUE.get(queue_id)
+        if not job:
+            return {
+                "video_id": queue_id,
+                "status": "failed",
+                "error": {"message": "Session de file d'attente expirée. Veuillez relancer la génération."},
+            }
 
-        for candidate_key in candidates:
-            try:
-                response = requests.post(
-                    endpoint,
-                    headers=self._build_headers(candidate_key),
-                    json=payload,
-                    timeout=90,
-                )
-            except requests.RequestException as e:
-                last_error_msg = f"Erreur de connexion au serveur ({self.base_url}) : {str(e)}"
-                continue
+        # Si la tâche a déjà obtenu un vrai video_id sur le serveur distant, suivre son avancement normal
+        if job.get("remote_video_id"):
+            real_vid = job["remote_video_id"]
+            real_model = job.get("remote_model") or get_default_model_id()
+            res = self.get_task_status(real_vid, model=real_model)
+            res["video_id"] = queue_id
+            return res
 
-            if response.status_code in (200, 201, 202):
-                data = response.json()
-                vid = data.get("video_id") or data.get("task_id") or data.get("id")
-                if vid:
-                    if not is_default_server:
-                        vid = f"custom_op::{vid}"
-                        data["video_id"] = vid
-                    register_task_key(str(vid), candidate_key)
-                if is_shared_pool:
-                    consume_shared_quota(BASE_DIR)
-                return data
+        now = time.time()
+        elapsed_since_last = now - float(job.get("last_try_at", 0))
+        attempts = int(job.get("attempts", 1))
 
-            last_status = response.status_code
-            try:
-                err_data = response.json()
-                msg = err_data.get("message") or err_data.get("error", {}).get("message") or str(err_data)
-                code = err_data.get("code") or ""
-                if "insufficient_user_quota" in msg or code == "insufficient_user_quota":
-                    msg = "Quota épuisé sur cette clé. Passage automatique à une autre clé ou sélectionnez 'Super Video Engine v2.0'."
-                last_error_msg = msg
-            except Exception:
-                last_error_msg = response.text or f"Erreur HTTP {response.status_code}"
+        # Attendre au moins 16 secondes entre chaque tentative pour respecter la limite de fréquence du Pool gratuit
+        if elapsed_since_last < 16.0:
+            wait_prog = min(22, 8 + attempts * 2)
+            return {
+                "video_id": queue_id,
+                "status": "queued",
+                "progress": wait_prog,
+                "queue_message": f"Serveurs gratuits très sollicités — file d'attente prioritaire Super Video AI (tentative #{attempts}, nouvel essai auto dans {max(1, int(16 - elapsed_since_last))}s)...",
+            }
 
-            if response.status_code in (401, 402, 403, 429, 500, 502, 503, 504):
-                continue
-            else:
-                break
+        # Nouvelle tentative avec la clé suivante du Pool
+        candidates: List[str] = job["candidates"]
+        key_idx = int(job.get("key_idx", 0)) % len(candidates)
+        candidate_key = candidates[key_idx]
+        job["key_idx"] = (key_idx + 1) % len(candidates)
+        job["last_try_at"] = now
+        job["attempts"] = attempts + 1
 
-        raise AgnesAPIError(f"Échec de génération ({last_status}) : {last_error_msg}", status_code=last_status)
+        models_to_try: List[str] = job["models_to_try"]
+        chosen_model = models_to_try[0]
+
+        payload = self._build_video_payload(
+            chosen_model,
+            job["final_prompt"],
+            job["neg_prompt"],
+            job["image_url"],
+            job["mode"],
+            job["seconds"],
+            job["size"],
+            job["aspect_ratio"],
+            job["target_width"],
+            job["target_height"],
+            job["seed"],
+        )
+
+        ok_data, status_code, err_code, err_msg = self._try_submit_once(
+            job["endpoint"],
+            candidate_key,
+            payload,
+            True,
+            bool(job["is_shared_pool"]),
+        )
+
+        if ok_data is not None:
+            real_vid = ok_data.get("video_id") or ok_data.get("task_id") or ok_data.get("id")
+            job["remote_video_id"] = str(real_vid)
+            job["remote_model"] = chosen_model
+            return {
+                "video_id": queue_id,
+                "status": "in_progress",
+                "progress": 25,
+                "queue_message": "Place GPU obtenue ! Calcul et rendu vidéo en cours...",
+            }
+
+        if job["attempts"] >= 20:
+            _PENDING_AUTOQUEUE.pop(queue_id, None)
+            return {
+                "video_id": queue_id,
+                "status": "failed",
+                "error": {
+                    "message": (
+                        "Les serveurs gratuits Super Video AI sont actuellement pleins à 100% (forte affluence). "
+                        "Réessayez dans quelques minutes ou connectez une clé personnelle (Google Veo 3, Sora, Kling, Fal.ai) dans 'Studio Actif'."
+                    )
+                },
+            }
+
+        wait_prog = min(22, 8 + job["attempts"] * 2)
+        return {
+            "video_id": queue_id,
+            "status": "queued",
+            "progress": wait_prog,
+            "queue_message": f"Serveurs gratuits complets — maintien automatique dans la file d'attente (tentative #{job['attempts']})...",
+        }
 
     def get_task_status(self, video_id: str, model: str = "") -> Dict[str, Any]:
         """Interroge l'état d'avancement de la tâche vidéo quel que soit le moteur sélectionné."""
+        if video_id.startswith("autoqueue::"):
+            return self._poll_autoqueue_task(video_id)
+
         mapped_key = get_task_key(video_id)
         candidates, _ = resolve_candidate_keys(self.api_key or get_user_api_key())
         key_to_use = mapped_key or (candidates[0] if candidates else "")
@@ -473,7 +678,6 @@ class AgnesClient:
 
         if video_id.startswith("custom_op::"):
             raw_id = video_id.split("custom_op::", 1)[1]
-            # Essayer d'abord le format standard OpenAI Sora / Gateway : GET {base_url}/videos/{id}
             try:
                 r1 = requests.get(f"{self.base_url}/videos/{raw_id}", headers=self._build_headers(key_to_use), timeout=30)
                 if r1.status_code == 200:

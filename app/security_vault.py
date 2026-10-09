@@ -16,7 +16,8 @@ _VAULT_SALT = b"SVA_KevinoGeek_2026_Studio_Vault_Key!"
 # URLs et identifiants moteur chiffrés (Zéro mention du fournisseur en clair)
 _SEALED_BASE_URL = "D~yVFVoYA&ytoKSt*3W?;(2<I7+Iq!rMncEuAoClTT9MlE9d"
 _SEALED_QUERY_URL = "D~yVFVoYA&ytoKSt*3W?;(2<I7+Iq!rMncEuAplN-&tjhH(m+"
-_SEALED_DEFAULT_MODEL = "D~t*ggf3gZL!=8VsJwCk;sG{aU@~yx"
+_SEALED_DEFAULT_MODEL = "D~t*ggf3gZL!=8VsJv?61Lu2`8d$qzX+6PFF#"
+_SEALED_LEGACY_MODEL = "D~t*ggf3gZL!=8VsJwCk;sG{aU@~yx"
 _SEALED_ENV_KEY = "D~vKLycT=s8DqEUk{!}EFet}dqW"
 _SEALED_ENV_URL = "D~vKLycT=s868U#=wwpBF)}EpS5E"
 
@@ -59,6 +60,20 @@ def get_default_query_url() -> str:
 
 def get_default_model_id() -> str:
     return unseal_secret(_SEALED_DEFAULT_MODEL)
+
+
+def get_legacy_model_id() -> str:
+    return unseal_secret(_SEALED_LEGACY_MODEL)
+
+
+def sanitize_provider_text(text: str) -> str:
+    """Masque toute mention interne du fournisseur dans les messages d'erreur renvoyés au client."""
+    if not text:
+        return ""
+    p = unseal_secret(_SEALED_ENV_KEY)[:5].lower()
+    cleaned = re.sub(rf"(?i){p}-video-[a-z0-9.\-]+", "Super Video Engine", str(text))
+    cleaned = re.sub(rf"(?i){p}(-ai|ai)?", "Super Video AI", cleaned)
+    return cleaned
 
 
 def get_legacy_env_names() -> Tuple[str, str]:
