@@ -1,33 +1,25 @@
 ================================================================================
          GUIDE D'UTILISATION RAPIDE — SUPER VIDEO AI (STUDIO DESKTOP)
+         Vibe coder par Stéphane Kevin Assamoi
+         Référent Digital & AI Product Builder
 ================================================================================
 
 Bienvenue dans Super Video AI !
-L'application fonctionne comme un vrai logiciel de bureau (Desktop) avec sa
-propre fenêtre dédiée sur Windows et MacBook.
+L'application fonctionne comme un vrai logiciel de bureau (Desktop) autonome :
+vous n'avez NI Python NI Git à installer manuellement.
 
 --------------------------------------------------------------------------------
-1. PRÉREQUIS (UNE SEULE FOIS SUR L'ORDINATEUR)
---------------------------------------------------------------------------------
-Assurez-vous que Python (version 3.10 ou supérieure) est installé :
-- Sur Windows : https://www.python.org/downloads/
-  (Important : cochez la case "Add Python to PATH" en bas de l'installateur)
-- Sur Mac : Python 3 est généralement déjà présent (ou via python.org)
-
---------------------------------------------------------------------------------
-2. COMMENT OUVRIR L'APPLICATION AU QUOTIDIEN ?
+1. COMMENT OUVRIR L'APPLICATION ?
 --------------------------------------------------------------------------------
 
 💻 SUR PC WINDOWS :
    Double-cliquez simplement sur l'application :
    👉  Super Video AI.exe  (avec l'icône violette officielle)
 
-   - Aucune fenêtre noire de commande ne s'ouvre.
-   - Lors de la toute première ouverture, une petite fenêtre d'initialisation
-     prépare automatiquement le studio, puis l'application Desktop s'ouvre.
-   - Astuce : Vous pouvez faire Clic droit sur "Super Video AI.exe" ->
-     "Envoyer vers" -> "Bureau (créer un raccourci)" ou "Épingler à la barre
-     des tâches".
+   - Lors de la toute première ouverture uniquement : une fenêtre graphique
+     signée prépare automatiquement le moteur Studio en arrière-plan (~1 min),
+     crée l'icône sur votre Bureau Windows, puis ouvre l'application.
+   - Toutes les fois suivantes : l'application s'ouvre directement.
 
 🍎 SUR MAC (MacBook / iMac) :
    Double-cliquez simplement sur l'application :
@@ -36,17 +28,17 @@ Assurez-vous que Python (version 3.10 ou supérieure) est installé :
    - Vous pouvez aussi glisser "Super Video AI.app" dans votre Dock macOS.
 
 --------------------------------------------------------------------------------
-3. PREMIÈRE CONFIGURATION DE VOTRE CLÉ STUDIO
+2. PREMIÈRE CONFIGURATION DE VOTRE CLÉ STUDIO
 --------------------------------------------------------------------------------
 1. Cliquez sur le bouton "Clé Studio" en haut à droite de la fenêtre.
 2. Collez votre clé d'accès Studio et cliquez sur "Enregistrer".
 3. Le badge passe au vert ("Connecté") : vous êtes prêt à créer !
 
 --------------------------------------------------------------------------------
-4. MISES À JOUR EN 1 CLIC
+3. MISES À JOUR EN 1 CLIC (SANS GIT REQUIS)
 --------------------------------------------------------------------------------
-- Lorsqu'une nouveauté est disponible, un point orange s'affiche sur le bouton
-  "Mise à jour" en haut à droite de l'application.
-- Cliquez dessus puis sur "Installer la mise à jour maintenant" : l'application
-  se met à jour et se recharge toute seule.
+- Lorsqu'une nouveauté est publiée, un point orange s'affiche sur la cloche
+  "Mises à jour" en haut à droite de l'application.
+- Cliquez dessus puis sur "Installer la mise à jour" : l'application télécharge
+  et installe les nouveautés toute seule en 2 secondes.
 ================================================================================

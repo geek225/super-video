@@ -9,22 +9,65 @@ import requests
 
 GITHUB_REPO = "geek225/super-video"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+VERSION_FILE = PROJECT_ROOT / ".version"
 
 
 def get_current_git_commit() -> Optional[str]:
-    """Récupère le hash du commit local si git est présent."""
-    try:
-        res = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        if res.returncode == 0:
-            return res.stdout.strip()
-    except Exception:
-        pass
+    """
+    Récupère le hash de version locale :
+    1. Depuis git rev-parse HEAD si git est disponible
+    2. Depuis .git/refs/heads/main (lecture directe sans git installé)
+    3. Depuis le fichier .version (utilisateurs sans git / archive ZIP)
+    """
+    if shutil.which("git") and (PROJECT_ROOT / ".git").is_dir():
+        try:
+            res = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=4,
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                sha = res.stdout.strip()
+                try:
+                    VERSION_FILE.write_text(sha, encoding="utf-8")
+                except Exception:
+                    pass
+                return sha
+        except Exception:
+            pass
+
+    git_ref = PROJECT_ROOT / ".git" / "refs" / "heads" / "main"
+    if git_ref.exists():
+        try:
+            sha = git_ref.read_text(encoding="utf-8").strip()
+            if sha:
+                return sha
+        except Exception:
+            pass
+
+    if VERSION_FILE.exists():
+        try:
+            sha = VERSION_FILE.read_text(encoding="utf-8").strip()
+            if sha:
+                return sha
+        except Exception:
+            pass
+
+    return None
+
+
+def _find_pip_executable() -> Optional[Path]:
+    candidates = [
+        PROJECT_ROOT / ".runtime" / "python" / "Scripts" / "pip.exe",
+        PROJECT_ROOT / ".runtime" / "python" / "bin" / "pip",
+        PROJECT_ROOT / ".venv" / "Scripts" / "pip.exe",
+        PROJECT_ROOT / ".venv" / "bin" / "pip",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
     return None
 
 
@@ -43,8 +86,16 @@ def check_for_updates() -> Dict[str, Any]:
             commit_date = data.get("commit", {}).get("author", {}).get("date", "")
             formatted_date = commit_date[:10] if commit_date else ""
 
-            if current_commit:
+            if current_commit and latest_sha:
                 has_update = (current_commit != latest_sha) and not latest_sha.startswith(current_commit)
+            elif latest_sha and not current_commit:
+                # Première initialisation du fichier .version
+                try:
+                    VERSION_FILE.write_text(latest_sha, encoding="utf-8")
+                except Exception:
+                    pass
+                current_commit = latest_sha
+                has_update = False
             else:
                 has_update = False
 
@@ -55,7 +106,7 @@ def check_for_updates() -> Dict[str, Any]:
                 "latest_version": latest_sha[:7] if latest_sha else "Dernière",
                 "latest_message": commit_msg.split("\n")[0],
                 "latest_date": formatted_date,
-                "repo_url": f"https://github.com/{GITHUB_REPO}"
+                "repo_url": f"https://github.com/{GITHUB_REPO}",
             }
         elif resp.status_code in (404, 409):
             return {
@@ -65,94 +116,111 @@ def check_for_updates() -> Dict[str, Any]:
                 "latest_version": "Initial",
                 "latest_message": "Dépôt initialisé sur GitHub",
                 "latest_date": "",
-                "repo_url": f"https://github.com/{GITHUB_REPO}"
+                "repo_url": f"https://github.com/{GITHUB_REPO}",
             }
         else:
             return {
                 "success": False,
                 "error": f"GitHub a répondu avec le statut {resp.status_code}",
-                "update_available": False
+                "update_available": False,
             }
     except Exception as e:
         return {
             "success": False,
             "error": str(e),
-            "update_available": False
+            "update_available": False,
         }
 
 
 def apply_update() -> Dict[str, Any]:
-    """Applique la mise à jour (git pull ou téléchargement zip sécurisé)."""
-    is_git = (PROJECT_ROOT / ".git").is_dir()
+    """Applique la mise à jour (via git pull si disponible, sinon téléchargement ZIP direct sans Git)."""
+    has_git = bool(shutil.which("git")) and (PROJECT_ROOT / ".git").is_dir()
 
-    if is_git:
+    if has_git:
         try:
             pull_res = subprocess.run(
                 ["git", "pull", "origin", "main"],
                 cwd=PROJECT_ROOT,
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
             )
-            if pull_res.returncode != 0:
+            if pull_res.returncode == 0:
+                pip_exec = _find_pip_executable()
+                if pip_exec:
+                    subprocess.run(
+                        [str(pip_exec), "install", "-r", "requirements.txt"],
+                        cwd=PROJECT_ROOT,
+                        capture_output=True,
+                        timeout=120,
+                    )
+                new_commit = get_current_git_commit()
                 return {
-                    "success": False,
-                    "error": f"Échec de synchronisation Git : {pull_res.stderr or pull_res.stdout}"
+                    "success": True,
+                    "message": "Mise à jour installée avec succès !",
+                    "version": new_commit[:7] if new_commit else "À jour",
+                    "restart_required": True,
                 }
+        except Exception:
+            pass
 
-            # Mise à jour des dépendances si nécessaire
-            pip_executable = PROJECT_ROOT / ".venv" / "bin" / "pip"
-            if not pip_executable.exists():
-                pip_executable = PROJECT_ROOT / ".venv" / "Scripts" / "pip.exe"
+    # Mode universel sans Git (téléchargement ZIP direct depuis GitHub)
+    try:
+        zip_url = f"https://github.com/{GITHUB_REPO}/archive/refs/heads/main.zip"
+        headers = {"User-Agent": "SuperVideoAI-Updater/1.0"}
+        resp = requests.get(zip_url, headers=headers, timeout=60)
+        if resp.status_code != 200:
+            return {"success": False, "error": f"Téléchargement impossible (Code HTTP {resp.status_code})"}
 
-            if pip_executable.exists():
-                subprocess.run(
-                    [str(pip_executable), "install", "-r", "requirements.txt"],
-                    cwd=PROJECT_ROOT,
-                    capture_output=True,
-                    timeout=120
-                )
+        protected_prefixes = (".env", "outputs", "uploads", ".venv", ".runtime", ".git")
+        with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
+            for member in z.infolist():
+                parts = Path(member.filename).parts
+                if len(parts) <= 1:
+                    continue
+                rel_path = Path(*parts[1:])
+                if not rel_path.parts or rel_path.parts[0] in protected_prefixes:
+                    continue
 
-            new_commit = get_current_git_commit()
-            return {
-                "success": True,
-                "message": "Mise à jour installée avec succès !",
-                "version": new_commit[:7] if new_commit else "À jour",
-                "restart_required": True
-            }
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-    else:
-        # Téléchargement direct de l'archive pour utilisateurs ZIP
-        try:
-            zip_url = f"https://github.com/{GITHUB_REPO}/archive/refs/heads/main.zip"
-            headers = {"User-Agent": "SuperVideoAI-Updater/1.0"}
-            resp = requests.get(zip_url, headers=headers, timeout=60)
-            if resp.status_code != 200:
-                return {"success": False, "error": f"Téléchargement impossible (Code HTTP {resp.status_code})"}
+                target_file = (PROJECT_ROOT / rel_path).resolve()
+                if PROJECT_ROOT.resolve() not in target_file.parents:
+                    continue
 
-            with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
-                for member in z.infolist():
-                    parts = Path(member.filename).parts
-                    if len(parts) <= 1:
-                        continue
-                    rel_path = Path(*parts[1:])
-                    # Préservation absolue des secrets et des créations utilisateur
-                    if str(rel_path).startswith((".env", "outputs", "uploads", ".venv")):
-                        continue
-
-                    target_file = PROJECT_ROOT / rel_path
-                    if member.is_dir():
-                        target_file.mkdir(parents=True, exist_ok=True)
-                    else:
-                        target_file.parent.mkdir(parents=True, exist_ok=True)
+                if member.is_dir():
+                    target_file.mkdir(parents=True, exist_ok=True)
+                else:
+                    target_file.parent.mkdir(parents=True, exist_ok=True)
+                    try:
                         with z.open(member) as src, open(target_file, "wb") as dst:
                             shutil.copyfileobj(src, dst)
+                    except PermissionError:
+                        # Sur Windows, Super Video AI.exe peut être verrouillé pendant l'exécution
+                        continue
 
-            return {
-                "success": True,
-                "message": "Mise à jour des fichiers terminée avec succès !",
-                "restart_required": True
-            }
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+        # Enregistrer le nouveau SHA dans .version
+        try:
+            commits_url = f"https://api.github.com/repos/{GITHUB_REPO}/commits/main"
+            c_resp = requests.get(commits_url, headers=headers, timeout=10)
+            if c_resp.status_code == 200:
+                latest_sha = c_resp.json().get("sha", "")
+                if latest_sha:
+                    VERSION_FILE.write_text(latest_sha, encoding="utf-8")
+        except Exception:
+            pass
+
+        pip_exec = _find_pip_executable()
+        if pip_exec:
+            subprocess.run(
+                [str(pip_exec), "install", "-r", "requirements.txt"],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                timeout=120,
+            )
+
+        return {
+            "success": True,
+            "message": "Mise à jour installée avec succès !",
+            "restart_required": True,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}

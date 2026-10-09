@@ -1,7 +1,9 @@
-# Virtual environment
+# Virtual environment & Portable runtime
 .venv/
 venv/
 ENV/
+.runtime/
+.version
 
 # Secrets & Environment variables
 .env
