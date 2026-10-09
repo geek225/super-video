@@ -173,7 +173,7 @@ def main() -> None:
             height=900,
             min_size=(1024, 700),
             background_color="#05050A",
-            text_select=True,
+            text_select=False,
             js_api=api,
         )
         api.set_window(window)

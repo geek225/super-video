@@ -1,5 +1,28 @@
 // Super Video - Client Application Logic
 
+// Blindage 1 : Protection Anti-Inspecteur & Anti-Copie Desktop
+document.addEventListener("contextmenu", (e) => {
+  const tag = e.target && e.target.tagName ? e.target.tagName.toUpperCase() : "";
+  if (tag !== "INPUT" && tag !== "TEXTAREA") {
+    e.preventDefault();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  const key = (e.key || "").toUpperCase();
+  const ctrlOrCmd = e.ctrlKey || e.metaKey;
+  const shiftOrAlt = e.shiftKey || e.altKey;
+  if (
+    e.key === "F12" ||
+    (ctrlOrCmd && shiftOrAlt && ["I", "J", "C", "K"].includes(key)) ||
+    (ctrlOrCmd && key === "U")
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   // Éléments du DOM
   const fileInput = document.getElementById("fileInput");
@@ -152,33 +175,44 @@ document.addEventListener("DOMContentLoaded", () => {
         inputBaseUrl.focus();
       } else {
         customUrlContainer.classList.add("hidden");
-        inputBaseUrl.value = selectProvider.value;
+        inputBaseUrl.value = "";
       }
     });
   }
 
-  // 2. Gestion de la clé API et des fournisseurs
+  // 2. Gestion de la clé API et du Pool Hybride (Solution C)
   async function checkApiKeyStatus() {
     try {
       const res = await fetch("/api/settings");
       const data = await res.json();
+      const poolTitle = document.getElementById("poolStatusTitle");
+      const poolDesc = document.getElementById("poolStatusDesc");
+
       if (data.configured) {
         apiKeyDot.className = "w-2 h-2 rounded-full bg-emerald-400";
-        apiKeyText.textContent = `Clé : ${data.masked_key}`;
+        if (data.is_shared_pool) {
+          const remaining = Math.max(0, (data.quota_limit || 5) - (data.quota_used || 0));
+          apiKeyText.textContent = `Studio Actif (${remaining}/${data.quota_limit || 5} aujourd'hui)`;
+          if (poolTitle) poolTitle.textContent = `Pool Communautaire Actif (${remaining}/${data.quota_limit || 5} vidéos restantes aujourd'hui)`;
+          if (poolDesc) poolDesc.textContent = `Rotation multi-clés automatique active (${data.pool_size || 1} clé(s) dans le coffre-fort). Ajoutez votre propre clé Studio ci-dessous pour passer en mode illimité.`;
+        } else {
+          apiKeyText.textContent = `Clé Pro : ${data.masked_key}`;
+          if (poolTitle) poolTitle.textContent = "Mode Personnel Illimité Actif ✓";
+          if (poolDesc) poolDesc.textContent = `Votre clé Studio (${data.masked_key}) est active avec bascule de secours automatique sur le Pool.`;
+        }
       } else {
         apiKeyDot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
         apiKeyText.textContent = "Clé non configurée";
       }
 
-      if (data.base_url) {
+      if (data.is_default_engine === false && data.base_url && data.base_url !== "default") {
         inputBaseUrl.value = data.base_url;
-        if (!data.is_agnes_default) {
-          selectProvider.value = "custom";
-          customUrlContainer.classList.remove("hidden");
-        } else {
-          selectProvider.value = data.base_url;
-          customUrlContainer.classList.add("hidden");
-        }
+        selectProvider.value = "custom";
+        customUrlContainer.classList.remove("hidden");
+      } else {
+        inputBaseUrl.value = "";
+        selectProvider.value = "default";
+        customUrlContainer.classList.add("hidden");
       }
     } catch (e) {
       console.error("Erreur statut clé:", e);
@@ -614,6 +648,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const videoId = data.data.video_id || data.data.task_id || data.data.id;
+      checkApiKeyStatus();
       startProgressStream(videoId, modelSelect.value);
 
     } catch (err) {

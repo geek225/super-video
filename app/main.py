@@ -15,9 +15,16 @@ from app.config import (
     UPLOADS_DIR,
     OUTPUTS_DIR,
     get_api_key,
+    get_user_api_key,
     save_api_key,
     get_base_url,
     save_base_url
+)
+from app.security_vault import (
+    get_default_base_url,
+    get_shared_quota_status,
+    get_shared_pool_keys,
+    resolve_candidate_keys,
 )
 from app.image_bridge import process_image, ImageBridgeError
 from app.agnes_client import AgnesClient, AgnesAPIError
@@ -50,7 +57,7 @@ app.mount("/outputs", StaticFiles(directory=str(OUTPUTS_DIR)), name="outputs")
 class GenerateRequest(BaseModel):
     prompt: str = Field(..., description="Description de l'animation")
     image_url: Optional[str] = Field(None, description="URL de l'image source")
-    model: str = Field("agnes-video-v2.0", description="Modèle Agnes AI")
+    model: str = Field("studio-v2.0", description="Modèle Studio")
     mode: str = Field("keyframe", description="Mode de génération (keyframe, reference, text)")
     seconds: str = Field("5", description="Durée en secondes (4 à 12)")
     size: str = Field("720P", description="Résolution (720P, 1080P, 1K, 2K)")
@@ -62,8 +69,8 @@ class GenerateRequest(BaseModel):
 
 
 class SettingsRequest(BaseModel):
-    api_key: Optional[str] = Field(None, description="Clé API")
-    base_url: Optional[str] = Field(None, description="URL de base de l'API (Agnes AI ou alternative)")
+    api_key: Optional[str] = Field(None, description="Clé Studio")
+    base_url: Optional[str] = Field(None, description="URL de base du serveur")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -77,14 +84,27 @@ async def serve_index():
 @app.get("/api/settings")
 async def get_settings():
     key = get_api_key()
+    user_key = get_user_api_key()
     base_url = get_base_url()
     configured = bool(key)
-    masked = f"{key[:4]}...{key[-4:]}" if len(key) >= 8 else ("Configurée" if configured else "Non configurée")
+    _, is_shared_pool = resolve_candidate_keys(user_key)
+    if not is_shared_pool and len(user_key) >= 8:
+        masked = f"{user_key[:4]}...{user_key[-4:]}"
+    elif configured:
+        masked = "Pool Gratuit Actif"
+    else:
+        masked = "Non configurée"
+    used_today, limit_today = get_shared_quota_status(BASE_DIR)
+    is_default = base_url == get_default_base_url()
     return {
         "configured": configured,
         "masked_key": masked if configured else "",
-        "base_url": base_url,
-        "is_agnes_default": base_url == "https://apihub.agnes-ai.com/v1"
+        "base_url": "default" if is_default else base_url,
+        "is_default_engine": is_default,
+        "is_shared_pool": is_shared_pool,
+        "pool_size": len(get_shared_pool_keys()),
+        "quota_used": used_today,
+        "quota_limit": limit_today,
     }
 
 
@@ -126,7 +146,7 @@ async def create_video_task(req: GenerateRequest):
     if not key:
         raise HTTPException(status_code=401, detail="Clé d'activation Studio manquante. Veuillez la configurer dans les paramètres.")
     
-    client = AgnesClient(api_key=key)
+    client = AgnesClient(api_key=get_user_api_key())
     try:
         task_data = client.create_video_task(
             prompt=req.prompt,
@@ -149,7 +169,7 @@ async def create_video_task(req: GenerateRequest):
 
 
 @app.get("/api/task/{video_id}")
-async def check_task_status(video_id: str, model: str = "agnes-video-2.5"):
+async def check_task_status(video_id: str, model: str = "studio-v2.0"):
     client = AgnesClient()
     try:
         status_data = client.get_task_status(video_id, model=model)
@@ -159,7 +179,7 @@ async def check_task_status(video_id: str, model: str = "agnes-video-2.5"):
 
 
 @app.get("/api/stream/{video_id}")
-async def stream_task_progress(video_id: str, model: str = "agnes-video-2.5"):
+async def stream_task_progress(video_id: str, model: str = "studio-v2.0"):
     """
     Flux Server-Sent Events (SSE) pour suivre l'avancement en temps réel
     et télécharger automatiquement le fichier MP4 dès qu'il est prêt.
@@ -294,10 +314,13 @@ async def reveal_video_in_folder(filename: str):
 
 
 import importlib
-import app.config
-import app.image_bridge
-import app.agnes_client
-import app.updater
+from app import (
+    security_vault as _sv_mod,
+    config as _cfg_mod,
+    image_bridge as _ib_mod,
+    agnes_client as _ac_mod,
+    updater as _upd_mod,
+)
 
 
 @app.get("/api/updates/check")
@@ -311,10 +334,11 @@ async def api_apply_update():
     if not res.get("success"):
         raise HTTPException(status_code=500, detail=res.get("error", "Échec de la mise à jour"))
     try:
-        importlib.reload(app.config)
-        importlib.reload(app.image_bridge)
-        importlib.reload(app.agnes_client)
-        importlib.reload(app.updater)
+        importlib.reload(_sv_mod)
+        importlib.reload(_cfg_mod)
+        importlib.reload(_ib_mod)
+        importlib.reload(_ac_mod)
+        importlib.reload(_upd_mod)
     except Exception:
         pass
     return res

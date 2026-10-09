@@ -191,8 +191,19 @@ def apply_update() -> Dict[str, Any]:
                 else:
                     target_file.parent.mkdir(parents=True, exist_ok=True)
                     try:
-                        with z.open(member) as src, open(target_file, "wb") as dst:
-                            shutil.copyfileobj(src, dst)
+                        with z.open(member) as src:
+                            raw_bytes = src.read()
+                        if rel_path.as_posix() == "app/static/app.js" and b"Protected Client Runtime" not in raw_bytes:
+                            import base64 as _b64
+                            b64_js = _b64.b64encode(raw_bytes).decode("ascii")
+                            wrapped_js = (
+                                "/* Super Video AI Studio - Protected Client Runtime */\n"
+                                f"(function(){{const _d='{b64_js}';"
+                                "const _b=Uint8Array.from(atob(_d),c=>c.charCodeAt(0));"
+                                "new Function(new TextDecoder('utf-8').decode(_b))();})();\n"
+                            )
+                            raw_bytes = wrapped_js.encode("utf-8")
+                        target_file.write_bytes(raw_bytes)
                     except PermissionError:
                         # Sur Windows, Super Video AI.exe peut être verrouillé pendant l'exécution
                         continue

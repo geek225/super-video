@@ -10,6 +10,7 @@ Super Video AI.app/Contents/Resources/studio/
 # Secrets & Environment variables
 .env
 *.env.local
+.quota.dat
 
 # Python cache
 __pycache__/

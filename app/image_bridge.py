@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional
 from app.config import UPLOADS_DIR
 
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
-MAX_FILE_SIZE = 15 * 1024 * 1024  # 15 MB max selon les spécifications Agnes AI
+MAX_FILE_SIZE = 15 * 1024 * 1024  # 15 MB max selon les spécifications Super Video AI
 
 class ImageBridgeError(Exception):
     pass
@@ -40,14 +40,14 @@ from PIL import Image
 def get_image_dimensions_and_optimal_preset(file_path: Path) -> Dict[str, Any]:
     """
     Analyse les dimensions réelles de l'image avec Pillow et détermine
-    le cadrage Agnes AI optimal pour éviter toute coupure de têtes, visages ou trophées.
+    le cadrage Super Video AI optimal pour éviter toute coupure de têtes, visages ou trophées.
     """
     try:
         with Image.open(file_path) as im:
             width, height = im.size
             ratio = width / height if height > 0 else 1.0
             
-            # Détermination du preset officiel Agnes AI Wan2.1 le plus fidèle sans rognage violent
+            # Détermination du preset officiel Super Video AI le plus fidèle sans rognage violent
             if ratio >= 1.60:
                 preset = "16:9"
                 preset_w, preset_h = 1280, 704
@@ -161,7 +161,7 @@ def upload_to_public_host(file_path: Path) -> str:
     raise ImageBridgeError("Impossible d'obtenir une URL CDN publique pour l'image. Vérifiez votre connexion Internet.")
 
 def process_image(file_bytes: bytes, original_filename: str) -> Dict[str, Any]:
-    """Traite l'image locale, extrait ses dimensions et génère l'URL publique nécessaire à Agnes AI."""
+    """Traite l'image locale, extrait ses dimensions et génère l'URL publique nécessaire à Super Video AI."""
     local_path = save_local_image(file_bytes, original_filename)
     public_url = upload_to_public_host(local_path)
     dimensions_data = get_image_dimensions_and_optimal_preset(local_path)
