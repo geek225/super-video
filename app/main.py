@@ -14,11 +14,17 @@ from app.config import (
     BASE_DIR,
     UPLOADS_DIR,
     OUTPUTS_DIR,
+    PROVIDER_PRESETS,
     get_api_key,
     get_user_api_key,
     save_api_key,
     get_base_url,
-    save_base_url
+    save_base_url,
+    get_provider_mode,
+    save_provider_mode,
+    get_custom_model,
+    save_custom_model,
+    reset_to_free_pool,
 )
 from app.security_vault import (
     get_default_base_url,
@@ -71,6 +77,8 @@ class GenerateRequest(BaseModel):
 class SettingsRequest(BaseModel):
     api_key: Optional[str] = Field(None, description="Clé Studio")
     base_url: Optional[str] = Field(None, description="URL de base du serveur")
+    provider_mode: Optional[str] = Field(None, description="Identifiant du moteur (default, google_veo, openai_sora, kling_ai, higgsfield, fal_ai, custom)")
+    custom_model: Optional[str] = Field(None, description="Identifiant du modèle cible")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -86,8 +94,14 @@ async def get_settings():
     key = get_api_key()
     user_key = get_user_api_key()
     base_url = get_base_url()
-    configured = bool(key)
+    provider_mode = get_provider_mode()
+    custom_model = get_custom_model()
+    is_default = (base_url == get_default_base_url()) and (provider_mode in ("", "default"))
     _, is_shared_pool = resolve_candidate_keys(user_key)
+    if not is_default:
+        is_shared_pool = False
+
+    configured = bool(user_key) if not is_default else bool(key)
     if not is_shared_pool and len(user_key) >= 8:
         masked = f"{user_key[:4]}...{user_key[-4:]}"
     elif configured:
@@ -95,11 +109,12 @@ async def get_settings():
     else:
         masked = "Non configurée"
     used_today, limit_today = get_shared_quota_status(BASE_DIR)
-    is_default = base_url == get_default_base_url()
     return {
         "configured": configured,
         "masked_key": masked if configured else "",
         "base_url": "default" if is_default else base_url,
+        "provider_mode": provider_mode or "default",
+        "custom_model": custom_model,
         "is_default_engine": is_default,
         "is_shared_pool": is_shared_pool,
         "pool_size": len(get_shared_pool_keys()),
@@ -111,17 +126,32 @@ async def get_settings():
 @app.post("/api/settings")
 async def update_settings(req: SettingsRequest):
     updated = False
-    if req.api_key is not None and req.api_key.strip():
-        save_api_key(req.api_key.strip())
+    if req.provider_mode is not None:
+        pm = req.provider_mode.strip() or "default"
+        save_provider_mode(pm)
+        if pm in PROVIDER_PRESETS and pm != "custom":
+            save_base_url(PROVIDER_PRESETS[pm] or "default")
         updated = True
     if req.base_url is not None and req.base_url.strip():
         save_base_url(req.base_url.strip())
         updated = True
-        
+    if req.custom_model is not None:
+        save_custom_model(req.custom_model.strip())
+        updated = True
+    if req.api_key is not None and req.api_key.strip():
+        save_api_key(req.api_key.strip())
+        updated = True
+
     if not updated:
         raise HTTPException(status_code=400, detail="Aucun paramètre à enregistrer.")
-        
-    return {"success": True, "message": "Paramètres enregistrés avec succès dans le fichier .env"}
+
+    return {"success": True, "message": "Paramètres enregistrés avec succès !"}
+
+
+@app.post("/api/settings/reset")
+async def reset_settings_to_pool():
+    reset_to_free_pool()
+    return {"success": True, "message": "Retour au Pool Gratuit Super Video AI (5 vidéos/jour) activé !"}
 
 
 @app.post("/api/upload")

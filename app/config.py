@@ -20,6 +20,15 @@ OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 # Charger les variables d'environnement depuis .env s'il existe
 load_dotenv(dotenv_path=ENV_PATH, override=True)
 
+PROVIDER_PRESETS = {
+    "default": "",
+    "google_veo": "https://generativelanguage.googleapis.com/v1beta",
+    "openai_sora": "https://api.openai.com/v1",
+    "kling_ai": "https://api.klingai.com/v1",
+    "higgsfield": "https://api.higgsfield.ai/v1",
+    "fal_ai": "https://queue.fal.run",
+}
+
 
 def get_user_api_key() -> str:
     """Récupère uniquement la clé configurée localement par l'utilisateur dans .env."""
@@ -51,6 +60,43 @@ def save_api_key(api_key: str) -> None:
     os.environ["STUDIO_API_KEY"] = clean_key
 
 
+def get_provider_mode() -> str:
+    """Récupère l'identifiant du moteur sélectionné (default, google_veo, openai_sora, kling_ai, higgsfield, fal_ai, custom)."""
+    load_dotenv(dotenv_path=ENV_PATH, override=True)
+    mode = os.getenv("STUDIO_PROVIDER_MODE", "").strip()
+    if mode:
+        return mode
+    base = get_base_url()
+    if base == get_default_base_url():
+        return "default"
+    for k, url in PROVIDER_PRESETS.items():
+        if url and base.startswith(url):
+            return k
+    return "custom"
+
+
+def save_provider_mode(mode: str) -> None:
+    clean_mode = mode.strip() or "default"
+    if not ENV_PATH.exists():
+        ENV_PATH.write_text("", encoding="utf-8")
+    set_key(str(ENV_PATH), "STUDIO_PROVIDER_MODE", clean_mode)
+    os.environ["STUDIO_PROVIDER_MODE"] = clean_mode
+
+
+def get_custom_model() -> str:
+    """Récupère le nom du modèle personnalisé éventuel (ex: veo-3.0-generate-preview, sora-2, kling-v2, etc.)."""
+    load_dotenv(dotenv_path=ENV_PATH, override=True)
+    return os.getenv("STUDIO_CUSTOM_MODEL", "").strip()
+
+
+def save_custom_model(model_name: str) -> None:
+    clean_model = model_name.strip()
+    if not ENV_PATH.exists():
+        ENV_PATH.write_text("", encoding="utf-8")
+    set_key(str(ENV_PATH), "STUDIO_CUSTOM_MODEL", clean_model)
+    os.environ["STUDIO_CUSTOM_MODEL"] = clean_model
+
+
 def get_base_url() -> str:
     """Récupère l'URL de base de l'API depuis .env ou le coffre-fort chiffré."""
     load_dotenv(dotenv_path=ENV_PATH, override=True)
@@ -73,3 +119,13 @@ def save_base_url(base_url: str) -> None:
         ENV_PATH.write_text("", encoding="utf-8")
     set_key(str(ENV_PATH), "STUDIO_BASE_URL", clean_url)
     os.environ["STUDIO_BASE_URL"] = clean_url
+
+
+def reset_to_free_pool() -> None:
+    """Réinitialise la configuration pour revenir au Pool Gratuit Super Video AI (5 clés en rotation)."""
+    if not ENV_PATH.exists():
+        ENV_PATH.write_text("", encoding="utf-8")
+    legacy_key_env, legacy_url_env = get_legacy_env_names()
+    for var in ("STUDIO_API_KEY", "STUDIO_BASE_URL", "STUDIO_PROVIDER_MODE", "STUDIO_CUSTOM_MODEL", legacy_key_env, legacy_url_env):
+        set_key(str(ENV_PATH), var, "")
+        os.environ[var] = ""

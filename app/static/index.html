@@ -515,29 +515,48 @@
       <div class="space-y-4">
         <div id="poolStatusBanner" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-start gap-2.5">
           <span class="text-emerald-400 text-sm mt-0.5">⚡</span>
-          <div class="text-xs text-slate-300 leading-relaxed">
-            <p class="font-bold text-emerald-400" id="poolStatusTitle">Pool Communautaire Super Video AI Actif</p>
-            <p id="poolStatusDesc" class="text-[11px] text-slate-400 mt-0.5">Accès gratuit inclus (5 vidéos/jour en rotation multi-clés). Ajoutez votre propre clé Studio ci-dessous pour débloquer le mode illimité.</p>
+          <div class="text-xs text-slate-300 leading-relaxed flex-1">
+            <div class="flex items-center justify-between gap-2">
+              <p class="font-bold text-emerald-400" id="poolStatusTitle">Pool Communautaire Super Video AI Actif</p>
+              <button type="button" id="btnResetFreePool" class="hidden text-[10px] px-2 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-semibold transition-all">
+                🔄 Revenir au Gratuit
+              </button>
+            </div>
+            <p id="poolStatusDesc" class="text-[11px] text-slate-400 mt-0.5">Accès gratuit inclus (5 vidéos/jour en rotation sur 5 clés). Ou connectez votre propre clé (Google Veo 3, Sora 2, Kling, Higgsfield...) ci-dessous !</p>
           </div>
         </div>
 
         <div>
-          <label class="text-xs font-semibold text-slate-300 block mb-1.5">Moteur Cloud de Rendu</label>
+          <label class="text-xs font-semibold text-slate-300 block mb-1.5">Usine / Moteur Cloud de Rendu</label>
           <select id="selectProvider" class="w-full bg-slate-900 border border-brand-border rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-brand-purple mb-2">
-            <option value="default">Super Video AI Cloud (Officiel & Recommandé)</option>
-            <option value="custom">Serveur Personnalisé (Compatible Studio Videos)</option>
+            <option value="default">⚡ Super Video AI Cloud (Officiel — 5 vidéos/jour Gratuites)</option>
+            <option value="google_veo">🎬 Google Veo 3 / Veo 2 (Direct sans Google Flow — Clé AIza...)</option>
+            <option value="openai_sora">🎥 OpenAI Sora 2 / Sora Pro (Clé OpenAI sk-...)</option>
+            <option value="kling_ai">🔥 Kling AI 2.0 Master / 1.6 (Serveur Kling ou Passerelle)</option>
+            <option value="higgsfield">✨ Higgsfield AI — DoP Cinema Motion (Serveur Higgsfield)</option>
+            <option value="fal_ai">🚀 Fal.ai Multi-Moteurs (Veo 3, Kling 2, Runway Gen-3, Luma Ray 2, Hailuo)</option>
+            <option value="custom">🛠️ Serveur Personnalisé (Autre Usine / Hub Multi-IA libre)</option>
           </select>
-          <div id="customUrlContainer" class="hidden mb-2">
-            <label class="text-xs font-semibold text-slate-400 block mb-1">URL du serveur de rendu</label>
-            <input type="text" id="inputBaseUrl" placeholder="https://api.votre-serveur.com/v1" class="w-full bg-slate-900 border border-brand-border rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-brand-purple">
+
+          <p id="providerHelpHint" class="text-[11px] text-brand-cyan/90 bg-brand-cyan/10 border border-brand-cyan/20 rounded-lg px-2.5 py-1.5 mb-2 hidden"></p>
+
+          <div id="customUrlContainer" class="hidden space-y-2.5 mt-2 p-3 rounded-xl bg-slate-900/60 border border-brand-border/60">
+            <div>
+              <label class="text-[11px] font-semibold text-slate-300 block mb-1">URL du serveur de rendu (Adresse de l'usine)</label>
+              <input type="text" id="inputBaseUrl" placeholder="https://api.votre-serveur.com/v1" class="w-full bg-slate-950 border border-brand-border rounded-lg p-2 text-xs text-slate-200 outline-none focus:border-brand-purple font-mono">
+            </div>
+            <div>
+              <label class="text-[11px] font-semibold text-slate-300 block mb-1">Modèle cible sur ce serveur (Optionnel)</label>
+              <input type="text" id="inputCustomModel" placeholder="ex: veo-3.0-generate-preview, sora-2, kling-v2, higgsfield-dop" class="w-full bg-slate-950 border border-brand-border rounded-lg p-2 text-xs text-slate-200 outline-none focus:border-brand-purple font-mono">
+            </div>
           </div>
         </div>
 
         <div>
-          <label class="text-xs font-semibold text-slate-300 block mb-1.5">Clé d'Activation Studio Personnelle (Optionnel)</label>
-          <input type="password" id="inputApiKey" placeholder="ex: sk-... (ou plusieurs clés séparées par une virgule)" class="w-full bg-slate-900 border border-brand-border rounded-xl p-3 text-sm text-slate-200 outline-none focus:border-brand-purple">
+          <label class="text-xs font-semibold text-slate-300 block mb-1.5" id="labelApiKeyField">Clé d'Activation Personnelle (Badge de l'usine)</label>
+          <input type="password" id="inputApiKey" placeholder="ex: sk-... ou AIza... (ou plusieurs clés séparées par une virgule)" class="w-full bg-slate-900 border border-brand-border rounded-xl p-3 text-sm text-slate-200 outline-none focus:border-brand-purple">
           <p class="text-[11px] text-slate-400 mt-1.5">
-            Enregistrée localement dans <code class="text-brand-cyan">.env</code>. Permet de générer en illimité sans utiliser le quota journalier partagé.
+            Enregistrée uniquement sur votre ordinateur (<code class="text-brand-cyan">.env</code>). Débloque la génération illimitée avec votre propre moteur ou clé.
           </p>
         </div>
 
@@ -548,7 +567,7 @@
             Fermer
           </button>
           <button type="button" id="btnSaveApiKey" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-brand-violet hover:bg-brand-purple transition-all shadow-md shadow-brand-violet/30">
-            Enregistrer la clé Studio
+            Enregistrer la configuration
           </button>
         </div>
       </div>

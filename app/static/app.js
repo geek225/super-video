@@ -72,6 +72,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const selectProvider = document.getElementById("selectProvider");
   const customUrlContainer = document.getElementById("customUrlContainer");
   const inputBaseUrl = document.getElementById("inputBaseUrl");
+  const inputCustomModel = document.getElementById("inputCustomModel");
+  const providerHelpHint = document.getElementById("providerHelpHint");
+  const btnResetFreePool = document.getElementById("btnResetFreePool");
   const ratioDetectedInfo = document.getElementById("ratioDetectedInfo");
   const ratioDetectedText = document.getElementById("ratioDetectedText");
 
@@ -167,53 +170,176 @@ document.addEventListener("DOMContentLoaded", () => {
   checkApiKeyStatus();
   loadHistory();
 
-  // Gestion du changement de fournisseur
-  if (selectProvider) {
-    selectProvider.addEventListener("change", () => {
-      if (selectProvider.value === "custom") {
-        customUrlContainer.classList.remove("hidden");
-        inputBaseUrl.focus();
-      } else {
-        customUrlContainer.classList.add("hidden");
-        inputBaseUrl.value = "";
+  const PROVIDER_INFO = {
+    default: {
+      url: "",
+      model: "",
+      hint: "⚡ Mode Gratuit Inclus : utilise le Pool de 5 clés en rotation automatique (5 vidéos/jour). Vous pouvez aussi coller une clé Studio personnelle pour passer en illimité.",
+      showCustom: false,
+      models: [
+        { value: "studio-v2.0", label: "Super Video Engine v2.0 (Standard HD - Inclus)" }
+      ]
+    },
+    google_veo: {
+      url: "https://generativelanguage.googleapis.com/v1beta",
+      model: "veo-3.0-generate-preview",
+      hint: "🎬 Google Veo Direct (sans aller sur Google Flow) : collez votre clé Google AI Studio (commençant par AIza...). Compatible Veo 3 et Veo 2 en Image-to-Video !",
+      showCustom: true,
+      models: [
+        { value: "veo-3.0-generate-preview", label: "Google Veo 3.0 (Cinéma & Motion HD)" },
+        { value: "veo-2.0-generate-001", label: "Google Veo 2.0 (Stable Image-to-Video)" }
+      ]
+    },
+    openai_sora: {
+      url: "https://api.openai.com/v1",
+      model: "sora-2",
+      hint: "🎥 OpenAI Sora : collez votre clé API OpenAI (sk-...) ou l'URL de votre passerelle compatible Sora.",
+      showCustom: true,
+      models: [
+        { value: "sora-2", label: "OpenAI Sora 2 (Standard)" },
+        { value: "sora-2-pro", label: "OpenAI Sora 2 Pro (Haute Fidélité)" }
+      ]
+    },
+    kling_ai: {
+      url: "https://api.klingai.com/v1",
+      model: "kling-v2",
+      hint: "🔥 Kling AI : collez votre clé Kling (ou l'URL de votre passerelle Kling v2 / v1.6).",
+      showCustom: true,
+      models: [
+        { value: "kling-v2", label: "Kling 2.0 Master (Image-to-Video)" },
+        { value: "kling-v1-6", label: "Kling 1.6 Pro (Motion Design)" }
+      ]
+    },
+    higgsfield: {
+      url: "https://api.higgsfield.ai/v1",
+      model: "higgsfield-dop",
+      hint: "✨ Higgsfield AI : collez votre clé API Higgsfield (DoP Cinema / Diffuse) et ajustez l'URL si vous passez par un hub.",
+      showCustom: true,
+      models: [
+        { value: "higgsfield-dop", label: "Higgsfield DoP (Cinéma Caméra)" },
+        { value: "higgsfield-diffuse", label: "Higgsfield Diffuse (Animation Personnage)" }
+      ]
+    },
+    fal_ai: {
+      url: "https://queue.fal.run",
+      model: "fal-ai/kling-video/v2/master/image-to-video",
+      hint: "🚀 Fal.ai Hub : collez votre clé Fal (key_id:key_secret) pour utiliser Veo 3, Kling 2.0, Runway Gen-3, Luma Ray 2 ou MiniMax Hailuo.",
+      showCustom: true,
+      models: [
+        { value: "fal-ai/kling-video/v2/master/image-to-video", label: "Fal • Kling 2.0 Master" },
+        { value: "fal-ai/veo3", label: "Fal • Google Veo 3" },
+        { value: "fal-ai/runway-gen3/turbo/image-to-video", label: "Fal • Runway Gen-3 Turbo" },
+        { value: "fal-ai/luma-dream-machine/ray-2/image-to-video", label: "Fal • Luma Ray 2" },
+        { value: "fal-ai/minimax/video-01-live/image-to-video", label: "Fal • Hailuo MiniMax Live" }
+      ]
+    },
+    custom: {
+      url: "",
+      model: "",
+      hint: "🛠️ Serveur Personnalisé : indiquez l'URL de votre serveur (/v1), le nom du modèle (veo3, sora-2, kling-v2...) et votre clé d'activation.",
+      showCustom: true,
+      models: [
+        { value: "studio-v2.0", label: "Modèle du Serveur Personnalisé (Actif)" }
+      ]
+    }
+  };
+
+  function updateProviderUI(mode, existingUrl = "", existingModel = "") {
+    const info = PROVIDER_INFO[mode] || PROVIDER_INFO.custom;
+    if (providerHelpHint) {
+      providerHelpHint.textContent = info.hint;
+      providerHelpHint.classList.remove("hidden");
+    }
+    if (info.showCustom) {
+      customUrlContainer.classList.remove("hidden");
+      inputBaseUrl.value = existingUrl || info.url;
+      if (inputCustomModel) {
+        inputCustomModel.value = existingModel || info.model;
       }
+    } else {
+      customUrlContainer.classList.add("hidden");
+      inputBaseUrl.value = "";
+      if (inputCustomModel) inputCustomModel.value = "";
+    }
+  }
+
+  function syncStudioModelSelect(mode, customModel = "") {
+    if (!modelSelect) return;
+    const info = PROVIDER_INFO[mode] || PROVIDER_INFO.default;
+    modelSelect.innerHTML = "";
+    if (customModel && !info.models.some(m => m.value === customModel)) {
+      const optCustom = document.createElement("option");
+      optCustom.value = customModel;
+      optCustom.textContent = `${customModel} (Modèle personnalisé actif)`;
+      modelSelect.appendChild(optCustom);
+    }
+    info.models.forEach((m) => {
+      const opt = document.createElement("option");
+      opt.value = m.value;
+      opt.textContent = m.label;
+      if (customModel && m.value === customModel) opt.selected = true;
+      modelSelect.appendChild(opt);
     });
   }
 
-  // 2. Gestion de la clé API et du Pool Hybride (Solution C)
+  // Gestion du changement de fournisseur
+  if (selectProvider) {
+    selectProvider.addEventListener("change", () => {
+      updateProviderUI(selectProvider.value);
+    });
+  }
+
+  // 2. Gestion de la clé API et du Pool Hybride (Solution C + Multi-Moteurs)
   async function checkApiKeyStatus() {
     try {
       const res = await fetch("/api/settings");
       const data = await res.json();
       const poolTitle = document.getElementById("poolStatusTitle");
       const poolDesc = document.getElementById("poolStatusDesc");
+      const mode = data.provider_mode || "default";
+
+      if (btnResetFreePool) {
+        if (!data.is_shared_pool || mode !== "default") {
+          btnResetFreePool.classList.remove("hidden");
+        } else {
+          btnResetFreePool.classList.add("hidden");
+        }
+      }
 
       if (data.configured) {
         apiKeyDot.className = "w-2 h-2 rounded-full bg-emerald-400";
-        if (data.is_shared_pool) {
+        if (data.is_shared_pool && mode === "default") {
           const remaining = Math.max(0, (data.quota_limit || 5) - (data.quota_used || 0));
           apiKeyText.textContent = `Studio Actif (${remaining}/${data.quota_limit || 5} aujourd'hui)`;
           if (poolTitle) poolTitle.textContent = `Pool Communautaire Actif (${remaining}/${data.quota_limit || 5} vidéos restantes aujourd'hui)`;
-          if (poolDesc) poolDesc.textContent = `Rotation multi-clés automatique active (${data.pool_size || 1} clé(s) dans le coffre-fort). Ajoutez votre propre clé Studio ci-dessous pour passer en mode illimité.`;
+          if (poolDesc) poolDesc.textContent = `Rotation multi-clés automatique active (${data.pool_size || 5} clés dans le coffre-fort). Ou connectez votre propre serveur/clé (Veo 3, Sora 2, Kling, Higgsfield) ci-dessous !`;
         } else {
-          apiKeyText.textContent = `Clé Pro : ${data.masked_key}`;
-          if (poolTitle) poolTitle.textContent = "Mode Personnel Illimité Actif ✓";
-          if (poolDesc) poolDesc.textContent = `Votre clé Studio (${data.masked_key}) est active avec bascule de secours automatique sur le Pool.`;
+          const engineNames = {
+            default: "Studio Pro",
+            google_veo: "Google Veo",
+            openai_sora: "OpenAI Sora",
+            kling_ai: "Kling AI",
+            higgsfield: "Higgsfield",
+            fal_ai: "Fal.ai Hub",
+            custom: "Serveur Custom"
+          };
+          const eLabel = engineNames[mode] || "Clé Pro";
+          apiKeyText.textContent = `${eLabel} : ${data.masked_key} (Illimité)`;
+          if (poolTitle) poolTitle.textContent = `Mode Personnel Illimité Actif (${eLabel}) ✓`;
+          if (poolDesc) poolDesc.textContent = `Votre clé (${data.masked_key}) est connectée à ${eLabel} sans limite journalière.`;
         }
       } else {
         apiKeyDot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
-        apiKeyText.textContent = "Clé non configurée";
+        apiKeyText.textContent = "Clé requise pour ce moteur";
       }
 
-      if (data.is_default_engine === false && data.base_url && data.base_url !== "default") {
-        inputBaseUrl.value = data.base_url;
-        selectProvider.value = "custom";
-        customUrlContainer.classList.remove("hidden");
-      } else {
-        inputBaseUrl.value = "";
-        selectProvider.value = "default";
-        customUrlContainer.classList.add("hidden");
-      }
+      selectProvider.value = PROVIDER_INFO[mode] ? mode : "custom";
+      updateProviderUI(
+        selectProvider.value,
+        data.base_url === "default" ? "" : (data.base_url || ""),
+        data.custom_model || ""
+      );
+      syncStudioModelSelect(selectProvider.value, data.custom_model || "");
     } catch (e) {
       console.error("Erreur statut clé:", e);
     }
@@ -228,20 +354,34 @@ document.addEventListener("DOMContentLoaded", () => {
   btnCloseSettings.addEventListener("click", closeSettings);
   btnCancelSettings.addEventListener("click", closeSettings);
 
+  if (btnResetFreePool) {
+    btnResetFreePool.addEventListener("click", async () => {
+      try {
+        const res = await fetch("/api/settings/reset", { method: "POST" });
+        if (res.ok) {
+          showAlert(apiKeyAlert, "Retour au Pool Gratuit Super Video AI (5 vidéos/jour) activé !", "success");
+          inputApiKey.value = "";
+          await checkApiKeyStatus();
+        }
+      } catch (err) {
+        showAlert(apiKeyAlert, "Erreur lors de la réinitialisation.", "error");
+      }
+    });
+  }
+
   btnSaveApiKey.addEventListener("click", async () => {
     const key = inputApiKey.value.trim();
-    const chosenUrl = selectProvider.value === "custom" 
-      ? inputBaseUrl.value.trim() 
-      : selectProvider.value;
+    const mode = selectProvider.value;
+    const info = PROVIDER_INFO[mode] || PROVIDER_INFO.custom;
+    const chosenUrl = info.showCustom ? (inputBaseUrl.value.trim() || info.url) : "default";
+    const chosenModel = (info.showCustom && inputCustomModel) ? inputCustomModel.value.trim() : "";
 
-    const payload = {};
+    const payload = {
+      provider_mode: mode,
+      base_url: chosenUrl || "default",
+      custom_model: chosenModel
+    };
     if (key) payload.api_key = key;
-    if (chosenUrl) payload.base_url = chosenUrl;
-
-    if (!payload.api_key && !payload.base_url) {
-      showAlert(apiKeyAlert, "Veuillez renseigner les champs nécessaires.", "error");
-      return;
-    }
 
     try {
       const res = await fetch("/api/settings", {
@@ -251,10 +391,10 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const data = await res.json();
       if (res.ok) {
-        showAlert(apiKeyAlert, "Paramètres enregistrés avec succès !", "success");
-        checkApiKeyStatus();
+        showAlert(apiKeyAlert, "Configuration enregistrée avec succès !", "success");
+        await checkApiKeyStatus();
         inputApiKey.value = "";
-        setTimeout(closeSettings, 1200);
+        setTimeout(closeSettings, 1000);
       } else {
         showAlert(apiKeyAlert, data.detail || "Erreur lors de l'enregistrement.", "error");
       }
