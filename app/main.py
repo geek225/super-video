@@ -86,7 +86,10 @@ async def serve_index():
     index_file = STATIC_DIR / "index.html"
     if not index_file.exists():
         raise HTTPException(status_code=404, detail="Page introuvable")
-    return index_file.read_text(encoding="utf-8")
+    return HTMLResponse(
+        content=index_file.read_text(encoding="utf-8"),
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+    )
 
 
 @app.get("/api/settings")
@@ -247,7 +250,7 @@ async def stream_task_progress(video_id: str, model: str = "studio-v2.0"):
                             result
                         )
                         payload["local_url"] = f"/outputs/{local_path.name}"
-                        payload["remote_url"] = video_url
+                        payload["remote_url"] = f"/outputs/{local_path.name}"
                         payload["filename"] = local_path.name
                     else:
                         payload["status"] = "failed"

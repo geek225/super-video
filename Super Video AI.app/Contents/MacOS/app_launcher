@@ -17,7 +17,7 @@ if [ -f "$PARENT_DIR/desktop.py" ] && [ -d "$PARENT_DIR/app" ]; then
 else
     APP_DIR="$HOME/Library/Application Support/SuperVideoAI"
     mkdir -p "$APP_DIR"
-    if [ -d "$EMBEDDED_STUDIO" ] && [ ! -f "$APP_DIR/desktop.py" ]; then
+    if [ -d "$EMBEDDED_STUDIO" ]; then
         cp -R "$EMBEDDED_STUDIO/"* "$APP_DIR/" 2>/dev/null || true
         cp "$EMBEDDED_STUDIO/.env.example" "$APP_DIR/.env.example" 2>/dev/null || true
     fi

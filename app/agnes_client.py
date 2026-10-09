@@ -1,11 +1,14 @@
 import base64
+import io
 import json
+import threading
 import time
 import uuid
 import urllib.parse
 import requests
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List
+from PIL import Image
 from app.config import (
     BASE_DIR,
     UPLOADS_DIR,
@@ -20,6 +23,7 @@ from app.security_vault import (
     get_default_query_url,
     get_default_model_id,
     get_legacy_model_id,
+    get_relay_node_urls,
     sanitize_provider_text,
     resolve_candidate_keys,
     register_task_key,
@@ -28,8 +32,8 @@ from app.security_vault import (
     consume_shared_quota,
 )
 
-# File d'attente intelligente en mémoire lorsque les serveurs gratuits sont momentanément pleins
-_PENDING_AUTOQUEUE: Dict[str, Dict[str, Any]] = {}
+# Suivi temps réel des tâches exécutées sur le Cluster GPU Relais Turbo
+_RELAY_JOBS: Dict[str, Dict[str, Any]] = {}
 
 
 class AgnesAPIError(Exception):
@@ -390,12 +394,13 @@ class AgnesClient:
         is_shared_pool: bool,
     ) -> Tuple[Optional[Dict[str, Any]], int, str, str]:
         """Tente un appel POST unique. Retourne (data_si_succès, status_code, error_code, error_msg)."""
+        req_timeout = 15 if is_default_server else 60
         try:
             response = requests.post(
                 endpoint,
                 headers=self._build_headers(candidate_key),
                 json=payload,
-                timeout=60,
+                timeout=req_timeout,
             )
         except requests.RequestException as e:
             return None, 503, "network_error", sanitize_provider_text(str(e))
@@ -427,6 +432,306 @@ class AgnesClient:
             err_msg = response.text or f"Erreur HTTP {response.status_code}"
 
         return None, response.status_code, str(err_code), sanitize_provider_text(str(err_msg))
+
+    # =========================================================================
+    # CLUSTER GPU RELAIS TURBO (Bascule instantanée anti-503 / anti-429)
+    # =========================================================================
+    def _resolve_relay_image_bytes(
+        self,
+        image_url: Optional[str],
+        width: int,
+        height: int,
+    ) -> Tuple[str, bytes, str]:
+        """Récupère les octets de l'image locale uploadée (ou génère un canevas cinéma si mode texte)."""
+        try:
+            recent_uploads = sorted(UPLOADS_DIR.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)
+            for up in recent_uploads:
+                if up.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp") and up.stat().st_size > 0:
+                    mime = (
+                        "image/png"
+                        if up.suffix.lower() == ".png"
+                        else ("image/webp" if up.suffix.lower() == ".webp" else "image/jpeg")
+                    )
+                    return up.name, up.read_bytes(), mime
+        except Exception:
+            pass
+
+        if image_url and image_url.startswith("http"):
+            try:
+                r = requests.get(image_url, timeout=15)
+                if r.status_code == 200 and r.content:
+                    ct = r.headers.get("Content-Type", "image/jpeg").split(";")[0].strip()
+                    ext = ".png" if "png" in ct else ".jpg"
+                    return f"input_frame{ext}", r.content, ct
+            except Exception:
+                pass
+
+        # Canevas par défaut si aucune image n'est fournie
+        buf = io.BytesIO()
+        canvas = Image.new("RGB", (max(512, width), max(512, height)), (14, 16, 28))
+        canvas.save(buf, format="JPEG", quality=92)
+        return "canvas.jpg", buf.getvalue(), "image/jpeg"
+
+    @staticmethod
+    def _extract_relay_video_url(node_url: str, data_obj: Any) -> Optional[str]:
+        """Extrait l'URL MP4 finale depuis la réponse d'un nœud GPU Relais."""
+        if not data_obj:
+            return None
+        first = data_obj[0] if isinstance(data_obj, list) and len(data_obj) > 0 else data_obj
+        if isinstance(first, dict) and isinstance(first.get("video"), dict):
+            first = first["video"]
+        if isinstance(first, dict):
+            v_url = first.get("url")
+            v_path = first.get("path")
+            if v_url and str(v_url).startswith("http"):
+                return str(v_url)
+            if v_path:
+                return f"{node_url.rstrip('/')}/gradio_api/file={v_path}"
+        return None
+
+    def _run_cloud_relay_worker(
+        self,
+        relay_id: str,
+        final_prompt: str,
+        neg_prompt: str,
+        image_url: Optional[str],
+        seconds: str,
+        size: str,
+        aspect_ratio: str,
+        target_width: Optional[int],
+        target_height: Optional[int],
+        seed: Optional[int],
+        is_shared_pool: bool,
+    ) -> None:
+        job = _RELAY_JOBS.get(relay_id)
+        if not job:
+            return
+
+        w = int(target_width or 832)
+        h = int(target_height or 1088)
+        if not target_width or not target_height:
+            if aspect_ratio == "16:9":
+                w, h = 896, 512
+            elif aspect_ratio == "9:16":
+                w, h = 512, 896
+            elif aspect_ratio == "1:1":
+                w, h = 704, 704
+
+        fname, img_bytes, mime_type = self._resolve_relay_image_bytes(image_url, w, h)
+        nodes = get_relay_node_urls()
+        dur_sec = min(5.0, max(2.5, float(seconds or 5.0)))
+        seed_val = int(seed) if seed is not None else 42
+        randomize = seed is None
+        last_error = "Tous les nœuds GPU sont temporairement occupés."
+
+        for node_idx, node_url in enumerate(nodes):
+            try:
+                job["progress"] = max(job.get("progress", 14), 16 + node_idx * 4)
+                job["queue_message"] = f"Connexion au Cluster GPU Turbo Super Video AI (Nœud #{node_idx + 1})..."
+
+                # 1. Envoi de l'image source sur le nœud GPU
+                files = {"files": (fname, img_bytes, mime_type)}
+                r_up = requests.post(f"{node_url}/gradio_api/upload", files=files, timeout=25)
+                if r_up.status_code != 200:
+                    last_error = f"Nœud #{node_idx + 1} indisponible (upload {r_up.status_code})"
+                    continue
+                up_list = r_up.json()
+                if not isinstance(up_list, list) or not up_list:
+                    continue
+                remote_path = up_list[0]
+
+                job["progress"] = max(job.get("progress", 22), 26)
+                job["queue_message"] = "Image verrouillée sur le GPU — lancement du moteur Motion Design..."
+
+                # 2. Construction des paramètres selon la signature du nœud GPU
+                file_obj = {"path": remote_path, "meta": {"_type": "gradio.FileData"}}
+                if "multimodalart-wan2-1-fast" in node_url:
+                    # Nœud Wan 2.1 Fast (10 paramètres)
+                    norm_h = max(384, min(896, (h // 32) * 32))
+                    norm_w = max(384, min(896, (w // 32) * 32))
+                    call_data = [
+                        file_obj,
+                        final_prompt,
+                        norm_h,
+                        norm_w,
+                        neg_prompt,
+                        min(4, max(2, int(round(dur_sec)))),
+                        1.0,
+                        4,
+                        seed_val,
+                        randomize,
+                    ]
+                elif "r3gm-wan2-2" in node_url:
+                    # Nœud Wan 2.2 Preview (17 paramètres)
+                    call_data = [
+                        file_obj,
+                        None,
+                        final_prompt,
+                        6,
+                        neg_prompt,
+                        dur_sec,
+                        1,
+                        1,
+                        seed_val,
+                        randomize,
+                        6,
+                        "UniPCMultistep",
+                        3.0,
+                        16,
+                        True,
+                        True,
+                        True,
+                    ]
+                else:
+                    # Nœud principal Wan 2.2 FP8 AOTI Faster (9 paramètres)
+                    call_data = [
+                        file_obj,
+                        final_prompt,
+                        6,
+                        neg_prompt,
+                        dur_sec,
+                        1.0,
+                        1.0,
+                        seed_val,
+                        randomize,
+                    ]
+
+                r_call = requests.post(
+                    f"{node_url}/gradio_api/call/generate_video",
+                    json={"data": call_data},
+                    timeout=25,
+                )
+                if r_call.status_code != 200:
+                    last_error = f"Nœud #{node_idx + 1} occupé ({r_call.status_code})"
+                    continue
+
+                event_id = r_call.json().get("event_id")
+                if not event_id:
+                    continue
+
+                job["progress"] = max(job.get("progress", 32), 34)
+                job["queue_message"] = "Calcul GPU haute vitesse en cours (animation et effets de lumière)..."
+
+                # 3. Lecture du flux SSE du nœud GPU
+                current_event = ""
+                node_failed = False
+                with requests.get(
+                    f"{node_url}/gradio_api/call/generate_video/{event_id}",
+                    stream=True,
+                    timeout=150,
+                ) as s_resp:
+                    for raw_line in s_resp.iter_lines(decode_unicode=True):
+                        if not raw_line:
+                            continue
+                        line = raw_line.strip()
+                        if line.startswith("event:"):
+                            current_event = line.split("event:", 1)[1].strip()
+                            if current_event == "heartbeat":
+                                cur_p = int(job.get("progress", 35))
+                                job["progress"] = min(90, cur_p + 12)
+                                job["queue_message"] = "Rendu des images clés HD sur le GPU Turbo..."
+                        elif line.startswith("data:"):
+                            data_str = line.split("data:", 1)[1].strip()
+                            if current_event == "error":
+                                last_error = sanitize_provider_text(data_str or "Erreur sur le nœud GPU")
+                                node_failed = True
+                                break
+                            if current_event == "complete" and data_str and data_str != "null":
+                                parsed = json.loads(data_str)
+                                video_url = self._extract_relay_video_url(node_url, parsed)
+                                if video_url:
+                                    if is_shared_pool:
+                                        consume_shared_quota(BASE_DIR)
+                                    job["progress"] = 100
+                                    job["status"] = "completed"
+                                    job["resolved_url"] = video_url
+                                    job["queue_message"] = "Rendu terminé avec succès !"
+                                    return
+                                else:
+                                    node_failed = True
+                                    break
+                if node_failed:
+                    continue
+            except Exception as e:
+                last_error = sanitize_provider_text(str(e))
+                continue
+
+        job["status"] = "failed"
+        job["error"] = {
+            "message": (
+                f"Les serveurs gratuits Super Video AI sont momentanément saturés ({last_error}). "
+                "Veuillez réessayer dans un instant ou connecter une clé personnelle dans 'Studio Actif'."
+            )
+        }
+
+    def _launch_cloud_relay_job(
+        self,
+        final_prompt: str,
+        neg_prompt: str,
+        image_url: Optional[str],
+        seconds: str,
+        size: str,
+        aspect_ratio: str,
+        target_width: Optional[int],
+        target_height: Optional[int],
+        seed: Optional[int],
+        is_shared_pool: bool,
+        raw_prompt: str = "",
+    ) -> Dict[str, Any]:
+        relay_id = f"relay::{uuid.uuid4().hex[:12]}"
+        _RELAY_JOBS[relay_id] = {
+            "video_id": relay_id,
+            "status": "in_progress",
+            "progress": 14,
+            "prompt": raw_prompt or final_prompt,
+            "seconds": str(seconds or "5"),
+            "size": size or "720P",
+            "started_at": time.time(),
+            "resolved_url": None,
+            "error": None,
+            "queue_message": "Bascule automatique sur le Cluster GPU Turbo Super Video AI...",
+        }
+        worker = threading.Thread(
+            target=self._run_cloud_relay_worker,
+            args=(
+                relay_id,
+                final_prompt,
+                neg_prompt,
+                image_url,
+                seconds,
+                size,
+                aspect_ratio,
+                target_width,
+                target_height,
+                seed,
+                is_shared_pool,
+            ),
+            daemon=True,
+        )
+        worker.start()
+        return {
+            "video_id": relay_id,
+            "status": "in_progress",
+            "model": "studio-v2.0",
+        }
+
+    def _poll_cloud_relay_job(self, relay_id: str) -> Dict[str, Any]:
+        job = _RELAY_JOBS.get(relay_id)
+        if not job:
+            return {
+                "video_id": relay_id,
+                "status": "failed",
+                "error": {"message": "La session de rendu a expiré. Veuillez relancer la génération."},
+            }
+
+        if job["status"] in ("completed", "failed"):
+            return dict(job)
+
+        # Progression fluide basée sur le temps écoulé (environ 55-65s pour un rendu Wan 2.2 complet)
+        elapsed = max(0.0, time.time() - float(job.get("started_at", time.time())))
+        time_based_progress = min(92, int(15 + elapsed * 1.25))
+        job["progress"] = max(int(job.get("progress", 15)), time_based_progress)
+        return dict(job)
 
     # =========================================================================
     # CRÉATION & SUIVI DE TÂCHE PRINCIPALE
@@ -508,7 +813,7 @@ class AgnesClient:
                     status_code=429,
                 )
 
-        # Première tentative immédiate avec la première clé candidate et le modèle principal (2.5-flash)
+        # Première tentative immédiate avec la première clé candidate sur le serveur primaire
         first_key = candidates[0]
         primary_payload = self._build_video_payload(
             models_to_try[0],
@@ -529,142 +834,29 @@ class AgnesClient:
         if ok_data is not None:
             return ok_data
 
-        # Si sur le serveur par défaut la file d'attente GPU gratuite est momentanément pleine (video_queue_full / 503 / 429),
-        # on place automatiquement la tâche dans la File d'Attente Intelligente (Smart Auto-Queue) au lieu d'afficher une erreur 503 !
-        if is_default_server and status_code in (429, 500, 502, 503, 504):
-            queue_id = f"autoqueue::{uuid.uuid4().hex[:12]}"
-            _PENDING_AUTOQUEUE[queue_id] = {
-                "created_at": time.time(),
-                "last_try_at": time.time(),
-                "attempts": 1,
-                "key_idx": 1 % len(candidates),
-                "candidates": candidates,
-                "is_shared_pool": is_shared_pool,
-                "endpoint": endpoint,
-                "models_to_try": models_to_try,
-                "final_prompt": final_prompt,
-                "neg_prompt": neg_prompt,
-                "image_url": image_url,
-                "mode": mode,
-                "seconds": seconds,
-                "size": size,
-                "aspect_ratio": aspect_ratio,
-                "target_width": target_width,
-                "target_height": target_height,
-                "seed": seed,
-                "remote_video_id": None,
-                "remote_model": models_to_try[0],
-                "last_reason": err_code or "queue_busy",
-            }
-            return {
-                "video_id": queue_id,
-                "status": "queued",
-                "model": models_to_try[0],
-            }
+        # Si le serveur primaire est saturé (video_queue_full / 503 / 429 / 403), bascule IMMÉDIATE
+        # sur le Cluster GPU Relais Turbo pour générer la vidéo en ~60s sans attente bloquée à 10% !
+        if is_default_server and status_code in (400, 402, 403, 429, 500, 502, 503, 504):
+            return self._launch_cloud_relay_job(
+                final_prompt=final_prompt,
+                neg_prompt=neg_prompt,
+                image_url=image_url,
+                seconds=seconds,
+                size=size,
+                aspect_ratio=aspect_ratio,
+                target_width=target_width,
+                target_height=target_height,
+                seed=seed,
+                is_shared_pool=is_shared_pool,
+                raw_prompt=prompt,
+            )
 
         raise AgnesAPIError(f"Échec de génération ({status_code}) : {err_msg}", status_code=status_code)
 
-    def _poll_autoqueue_task(self, queue_id: str) -> Dict[str, Any]:
-        """Gère la file d'attente intelligente : réessaie automatiquement toutes les 16s jusqu'à obtenir un GPU libre."""
-        job = _PENDING_AUTOQUEUE.get(queue_id)
-        if not job:
-            return {
-                "video_id": queue_id,
-                "status": "failed",
-                "error": {"message": "Session de file d'attente expirée. Veuillez relancer la génération."},
-            }
-
-        # Si la tâche a déjà obtenu un vrai video_id sur le serveur distant, suivre son avancement normal
-        if job.get("remote_video_id"):
-            real_vid = job["remote_video_id"]
-            real_model = job.get("remote_model") or get_default_model_id()
-            res = self.get_task_status(real_vid, model=real_model)
-            res["video_id"] = queue_id
-            return res
-
-        now = time.time()
-        elapsed_since_last = now - float(job.get("last_try_at", 0))
-        attempts = int(job.get("attempts", 1))
-
-        # Attendre au moins 16 secondes entre chaque tentative pour respecter la limite de fréquence du Pool gratuit
-        if elapsed_since_last < 16.0:
-            wait_prog = min(22, 8 + attempts * 2)
-            return {
-                "video_id": queue_id,
-                "status": "queued",
-                "progress": wait_prog,
-                "queue_message": f"Serveurs gratuits très sollicités — file d'attente prioritaire Super Video AI (tentative #{attempts}, nouvel essai auto dans {max(1, int(16 - elapsed_since_last))}s)...",
-            }
-
-        # Nouvelle tentative avec la clé suivante du Pool
-        candidates: List[str] = job["candidates"]
-        key_idx = int(job.get("key_idx", 0)) % len(candidates)
-        candidate_key = candidates[key_idx]
-        job["key_idx"] = (key_idx + 1) % len(candidates)
-        job["last_try_at"] = now
-        job["attempts"] = attempts + 1
-
-        models_to_try: List[str] = job["models_to_try"]
-        chosen_model = models_to_try[0]
-
-        payload = self._build_video_payload(
-            chosen_model,
-            job["final_prompt"],
-            job["neg_prompt"],
-            job["image_url"],
-            job["mode"],
-            job["seconds"],
-            job["size"],
-            job["aspect_ratio"],
-            job["target_width"],
-            job["target_height"],
-            job["seed"],
-        )
-
-        ok_data, status_code, err_code, err_msg = self._try_submit_once(
-            job["endpoint"],
-            candidate_key,
-            payload,
-            True,
-            bool(job["is_shared_pool"]),
-        )
-
-        if ok_data is not None:
-            real_vid = ok_data.get("video_id") or ok_data.get("task_id") or ok_data.get("id")
-            job["remote_video_id"] = str(real_vid)
-            job["remote_model"] = chosen_model
-            return {
-                "video_id": queue_id,
-                "status": "in_progress",
-                "progress": 25,
-                "queue_message": "Place GPU obtenue ! Calcul et rendu vidéo en cours...",
-            }
-
-        if job["attempts"] >= 20:
-            _PENDING_AUTOQUEUE.pop(queue_id, None)
-            return {
-                "video_id": queue_id,
-                "status": "failed",
-                "error": {
-                    "message": (
-                        "Les serveurs gratuits Super Video AI sont actuellement pleins à 100% (forte affluence). "
-                        "Réessayez dans quelques minutes ou connectez une clé personnelle (Google Veo 3, Sora, Kling, Fal.ai) dans 'Studio Actif'."
-                    )
-                },
-            }
-
-        wait_prog = min(22, 8 + job["attempts"] * 2)
-        return {
-            "video_id": queue_id,
-            "status": "queued",
-            "progress": wait_prog,
-            "queue_message": f"Serveurs gratuits complets — maintien automatique dans la file d'attente (tentative #{job['attempts']})...",
-        }
-
     def get_task_status(self, video_id: str, model: str = "") -> Dict[str, Any]:
         """Interroge l'état d'avancement de la tâche vidéo quel que soit le moteur sélectionné."""
-        if video_id.startswith("autoqueue::"):
-            return self._poll_autoqueue_task(video_id)
+        if video_id.startswith("relay::") or video_id.startswith("autoqueue::"):
+            return self._poll_cloud_relay_job(video_id)
 
         mapped_key = get_task_key(video_id)
         candidates, _ = resolve_candidate_keys(self.api_key or get_user_api_key())
@@ -746,10 +938,14 @@ class AgnesClient:
                         if chunk:
                             f.write(chunk)
 
-            meta["local_filename"] = output_file.name
-            meta["saved_at"] = timestamp
+            safe_meta = dict(meta)
+            safe_meta["local_filename"] = output_file.name
+            safe_meta["saved_at"] = timestamp
+            safe_meta["resolved_url"] = f"/outputs/{output_file.name}"
+            if "url" in safe_meta:
+                safe_meta["url"] = f"/outputs/{output_file.name}"
             with open(meta_file, "w", encoding="utf-8") as f:
-                json.dump(meta, f, indent=2, ensure_ascii=False)
+                json.dump(safe_meta, f, indent=2, ensure_ascii=False)
 
             return output_file
         except requests.RequestException as e:

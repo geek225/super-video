@@ -30,6 +30,13 @@ _SEALED_KEY_POOL: List[str] = [
     "D~xK9ok)bDre`!rOvIOjd>H|%dI3RKCSh0mtw5#)QbBJsEZN)(lmtmV#$>~dNs(nO`!O=@uR#O",
 ]
 
+# Cluster GPU Relais Turbo chiffré (bascule instantanée anti-file d'attente 503/429)
+_SEALED_RELAY_NODES: List[str] = [
+    "D~yVFVoYA&ytwEuNTCoN80UMFe7&JbCZlYGRHq?d?*lCTsrPeN$nSHX49bR5azRb_Ffc3qOe+",
+    "D~yVFVoYA&yts%+s6v+h{e6Fv8dzVoL?Dx8vp~2x6lY7Q>Klb>aRVthY;HaXYB~",
+    "D~yVFVoYA&ytrsrE2N4afBprHW~Mk#*(Vl)EV)Cyi)KwT444{hh=47nLO>@AD`0EeE+D!",
+]
+
 # Mémorisation en mémoire de la clé ayant créé chaque video_id pour le suivi SSE
 _TASK_KEY_MAP: Dict[str, str] = {}
 
@@ -66,6 +73,19 @@ def get_legacy_model_id() -> str:
     return unseal_secret(_SEALED_LEGACY_MODEL)
 
 
+def get_relay_node_urls() -> List[str]:
+    """Retourne les URLs déchiffrées des nœuds GPU Relais Turbo."""
+    urls: List[str] = []
+    for blob in _SEALED_RELAY_NODES:
+        try:
+            u = unseal_secret(blob).strip().rstrip("/")
+            if u:
+                urls.append(u)
+        except Exception:
+            continue
+    return urls
+
+
 def sanitize_provider_text(text: str) -> str:
     """Masque toute mention interne du fournisseur dans les messages d'erreur renvoyés au client."""
     if not text:
@@ -73,6 +93,8 @@ def sanitize_provider_text(text: str) -> str:
     p = unseal_secret(_SEALED_ENV_KEY)[:5].lower()
     cleaned = re.sub(rf"(?i){p}-video-[a-z0-9.\-]+", "Super Video Engine", str(text))
     cleaned = re.sub(rf"(?i){p}(-ai|ai)?", "Super Video AI", cleaned)
+    cleaned = re.sub(r"(?i)[a-z0-9\-]+\.hf\.space", "gpu-cluster.supervideo.ai", cleaned)
+    cleaned = re.sub(r"(?i)gradio|zerogpu", "Super Video GPU", cleaned)
     return cleaned
 
 
