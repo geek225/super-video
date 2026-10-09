@@ -23,6 +23,10 @@ _SEALED_ENV_URL = "D~vKLycT=s868U#=wwpBF)}EpS5E"
 # Pool de clés partagées chiffrées (Solution C : Rotation automatique & Failover)
 _SEALED_KEY_POOL: List[str] = [
     "D~xK9oe+7Tn4hss&6!dBI3N0HV0d^*Uqve=7yq1sP`?&bQW_yL62g&yVj^5}s7e@>9x*bFOG0%",
+    "D~xK9ohba7o+q<YOJ4EDy21icV|=?yLt|A~Z`qtXl0p`B=v^I1k%89UMIE8ctuCBt`ZF^2TSC_",
+    "D~xK9ov3+Z86&VSu0*KEe?A#iT|vHYL>_YIRk@gc6@ke$F4`UqafMZY<)U6pO)EffL@_esh(TQ",
+    "D~xK9oe=${q2M*DR6tZheL$b9W4w4OrXN+AseYxosAnq=6MrL3P+`<wrkf;;R};jO0yHxD-a@k",
+    "D~xK9ok)bDre`!rOvIOjd>H|%dI3RKCSh0mtw5#)QbBJsEZN)(lmtmV#$>~dNs(nO`!O=@uR#O",
 ]
 
 # Mémorisation en mémoire de la clé ayant créé chaque video_id pour le suivi SSE
