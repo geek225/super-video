@@ -8,6 +8,15 @@ $ErrorActionPreference = "Stop"
 
 $AppDir = Split-Path -Parent $PSScriptRoot
 Set-Location $AppDir
+New-Item -ItemType Directory -Path (Join-Path $AppDir "uploads") -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $AppDir "outputs") -Force | Out-Null
+
+# Si l'utilisateur a lancé Super Video AI.exe depuis Téléchargements, en garder une copie dans AppDir
+$LauncherExeArg = if ($args.Count -gt 0) { $args[0] } else { $null }
+$ExePath = Join-Path $AppDir "Super Video AI.exe"
+if ($LauncherExeArg -and (Test-Path $LauncherExeArg) -and ($LauncherExeArg -ne $ExePath)) {
+    try { Copy-Item $LauncherExeArg $ExePath -Force } catch {}
+}
 
 # 1. Créer le fichier .env s'il n'existe pas
 if ((-not (Test-Path ".env")) -and (Test-Path ".env.example")) {
@@ -18,7 +27,6 @@ if ((-not (Test-Path ".env")) -and (Test-Path ".env.example")) {
 try {
     $DesktopDir = [Environment]::GetFolderPath("Desktop")
     $ShortcutPath = Join-Path $DesktopDir "Super Video AI.lnk"
-    $ExePath = Join-Path $AppDir "Super Video AI.exe"
     $IcoPath = Join-Path $AppDir "app_icon.ico"
     if ((-not (Test-Path $ShortcutPath)) -and (Test-Path $ExePath)) {
         $WshShell = New-Object -ComObject WScript.Shell

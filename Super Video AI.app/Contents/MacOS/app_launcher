@@ -1,19 +1,35 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Lanceur natif macOS Desktop Autonome pour Super Video AI (Méthode A)
-# Installe automatiquement un moteur Python portable si Python est absent du Mac
+# Lanceur natif macOS Desktop Autonome pour Super Video AI
+# Fonctionne en 1 seul fichier .app autonome (sans aucun autre fichier autour)
 # ==============================================================================
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/Library/Frameworks/Python.framework/Versions/Current/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
 BUNDLE_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-APP_DIR="$(cd "$BUNDLE_DIR/.." && pwd)"
+PARENT_DIR="$(cd "$BUNDLE_DIR/.." && pwd)"
+EMBEDDED_STUDIO="$BUNDLE_DIR/Contents/Resources/studio"
+
+# Si l'application est lancée dans le dossier de dev, utiliser ce dossier.
+# Si l'application a été envoyée toute seule à un utilisateur Mac, utiliser ~/Library/Application Support/SuperVideoAI
+if [ -f "$PARENT_DIR/desktop.py" ] && [ -d "$PARENT_DIR/app" ]; then
+    APP_DIR="$PARENT_DIR"
+else
+    APP_DIR="$HOME/Library/Application Support/SuperVideoAI"
+    mkdir -p "$APP_DIR"
+    if [ -d "$EMBEDDED_STUDIO" ] && [ ! -f "$APP_DIR/desktop.py" ]; then
+        cp -R "$EMBEDDED_STUDIO/"* "$APP_DIR/" 2>/dev/null || true
+        cp "$EMBEDDED_STUDIO/.env.example" "$APP_DIR/.env.example" 2>/dev/null || true
+    fi
+fi
+
 cd "$APP_DIR"
 
 # 1. Créer le fichier .env à partir de l'exemple si absent
 if [ ! -f ".env" ] && [ -f ".env.example" ]; then
     cp .env.example .env
 fi
+mkdir -p uploads outputs
 
 # 2. Trouver un interpréteur Python 3 valide sans déclencher la popup Xcode d'Apple
 find_system_python() {

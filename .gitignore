@@ -4,6 +4,8 @@ venv/
 ENV/
 .runtime/
 .version
+Fichiers_A_Envoyer/
+Super Video AI.app/Contents/Resources/studio/
 
 # Secrets & Environment variables
 .env
