@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Lanceur natif macOS pour Super Video AI
-# Exécution directe et silencieuse en tâche de fond (sans fenêtre de terminal)
+# Lanceur natif macOS Desktop pour Super Video AI
+# Ouvre une vraie fenêtre d'application macOS (PyWebView) sans navigateur web
 # ==============================================================================
 
-# Résolution absolue du dossier parent de l'application
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
 BUNDLE_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 APP_DIR="$(cd "$BUNDLE_DIR/.." && pwd)"
 cd "$APP_DIR"
 
-# 1. Vérification et initialisation de l'environnement virtuel Python
+# 1. Vérification et initialisation de l'environnement virtuel Python + PyWebView
 if [ ! -d ".venv" ]; then
     python3 -m venv .venv
     "$APP_DIR/.venv/bin/pip" install -r requirements.txt
+else
+    "$APP_DIR/.venv/bin/python" -c "import webview, uvicorn, fastapi" 2>/dev/null || "$APP_DIR/.venv/bin/pip" install -r requirements.txt
 fi
 
 # 2. Synchronisation automatique silencieuse depuis GitHub
@@ -21,15 +24,9 @@ if [ -d ".git" ]; then
 fi
 
 # 3. Création du fichier .env à partir de l'exemple si absent
-if [ ! -f ".env" ]; then
+if [ ! -f ".env" ] && [ -f ".env.example" ]; then
     cp .env.example .env
 fi
 
-# 4. Ouverture automatique du navigateur dès que le serveur est prêt
-(
-    sleep 2
-    open "http://127.0.0.1:7860"
-) &
-
-# 5. Démarrage du serveur uvicorn
-exec "$APP_DIR/.venv/bin/python" -m uvicorn app.main:app --host 127.0.0.1 --port 7860
+# 4. Lancement de la fenêtre Desktop native Super Video AI
+exec "$APP_DIR/.venv/bin/python" "$APP_DIR/desktop.py"

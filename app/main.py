@@ -251,6 +251,45 @@ async def get_history():
     return {"success": True, "history": items}
 
 
+import sys
+import subprocess
+
+
+def _resolve_safe_output_file(filename: str) -> Path:
+    safe_name = Path(filename).name
+    if not safe_name or safe_name in {".", ".."} or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Nom de fichier invalide.")
+    target = (OUTPUTS_DIR / safe_name).resolve()
+    if OUTPUTS_DIR.resolve() not in target.parents or not target.exists():
+        raise HTTPException(status_code=404, detail="Fichier vidéo introuvable.")
+    return target
+
+
+@app.get("/api/download/{filename}")
+async def download_video_file(filename: str):
+    target = _resolve_safe_output_file(filename)
+    return FileResponse(
+        path=str(target),
+        media_type="video/mp4",
+        filename=target.name,
+    )
+
+
+@app.post("/api/reveal/{filename}")
+async def reveal_video_in_folder(filename: str):
+    target = _resolve_safe_output_file(filename)
+    try:
+        if sys.platform == "darwin":
+            subprocess.run(["open", "-R", str(target)], check=False)
+        elif sys.platform == "win32":
+            subprocess.run(["explorer.exe", f"/select,{str(target)}"], check=False)
+        else:
+            subprocess.run(["xdg-open", str(target.parent)], check=False)
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Impossible d'ouvrir le dossier : {str(e)}")
+
+
 @app.get("/api/updates/check")
 async def api_check_updates():
     return check_for_updates()

@@ -620,6 +620,9 @@ document.addEventListener("DOMContentLoaded", () => {
     processStatus.textContent = statusMsg;
   }
 
+  let currentVideoFilename = null;
+  const btnRevealFolder = document.getElementById("btnRevealFolder");
+
   function showCompletedVideo(videoUrl, filename) {
     processingOverlay.classList.add("hidden");
     playerPlaceholder.classList.add("hidden");
@@ -628,17 +631,48 @@ document.addEventListener("DOMContentLoaded", () => {
     videoPlayer.load();
     videoPlayer.play().catch(() => {});
 
-    btnDownload.href = videoUrl;
-    btnDownload.download = filename || "super_video.mp4";
+    currentVideoFilename = filename || (videoUrl ? videoUrl.split("/").pop() : "super_video.mp4");
+    btnDownload.href = `/api/download/${encodeURIComponent(currentVideoFilename)}`;
+    btnDownload.download = currentVideoFilename;
     btnDownload.classList.remove("hidden");
 
-    if (filename) {
+    if (currentVideoFilename) {
       fileInfoBox.classList.remove("hidden");
-      savedPathLabel.textContent = `outputs/${filename}`;
+      savedPathLabel.textContent = `outputs/${currentVideoFilename}`;
     }
 
     playerBadge.textContent = "Terminé ✓";
     playerBadge.className = "text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium";
+  }
+
+  btnDownload.addEventListener("click", async (e) => {
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.save_video && currentVideoFilename) {
+      e.preventDefault();
+      try {
+        const res = await window.pywebview.api.save_video(currentVideoFilename);
+        if (res && res.success && res.saved_path) {
+          savedPathLabel.textContent = res.saved_path;
+        }
+      } catch (err) {
+        console.error("Erreur sauvegarde Desktop:", err);
+        window.location.href = `/api/download/${encodeURIComponent(currentVideoFilename)}`;
+      }
+    }
+  });
+
+  if (btnRevealFolder) {
+    btnRevealFolder.addEventListener("click", async () => {
+      if (!currentVideoFilename) return;
+      try {
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.reveal_in_folder) {
+          await window.pywebview.api.reveal_in_folder(currentVideoFilename);
+        } else {
+          await fetch(`/api/reveal/${encodeURIComponent(currentVideoFilename)}`, { method: "POST" });
+        }
+      } catch (err) {
+        console.error("Erreur ouverture dossier:", err);
+      }
+    });
   }
 
   // Ajustement dynamique de hauteur selon le ratio réel de la vidéo chargée

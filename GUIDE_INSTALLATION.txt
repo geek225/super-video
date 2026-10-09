@@ -1,112 +1,52 @@
 ================================================================================
-          🎬 GUIDE D'INSTALLATION FACILE - SUPER VIDEO AI STUDIO 🎬
+         GUIDE D'UTILISATION RAPIDE — SUPER VIDEO AI (STUDIO DESKTOP)
 ================================================================================
+
 Bienvenue dans Super Video AI !
-Ce guide vous explique pas à pas comment installer et utiliser ce logiciel sur
-votre ordinateur en quelques minutes, même si vous n'avez aucune compétence
-technique ou informatique.
+L'application fonctionne comme un vrai logiciel de bureau (Desktop) avec sa
+propre fenêtre dédiée sur Windows et MacBook.
 
-Suivez simplement les 4 étapes ci-dessous.
+--------------------------------------------------------------------------------
+1. PRÉREQUIS (UNE SEULE FOIS SUR L'ORDINATEUR)
+--------------------------------------------------------------------------------
+Assurez-vous que Python (version 3.10 ou supérieure) est installé :
+- Sur Windows : https://www.python.org/downloads/
+  (Important : cochez la case "Add Python to PATH" en bas de l'installateur)
+- Sur Mac : Python 3 est généralement déjà présent (ou via python.org)
 
-================================================================================
-ÉTAPE 1 : INSTALLER PYTHON SUR VOTRE ORDINATEUR (À faire 1 seule fois)
-================================================================================
-Pour fonctionner, le logiciel a juste besoin de Python (un outil gratuit et
-officiel).
+--------------------------------------------------------------------------------
+2. COMMENT OUVRIR L'APPLICATION AU QUOTIDIEN ?
+--------------------------------------------------------------------------------
 
-1. Allez sur le site officiel : https://www.python.org/downloads/
-2. Cliquez sur le gros bouton jaune "Download Python" (version 3.10 ou supérieure).
-3. Lancez le fichier téléchargé pour démarrer l'installation :
+💻 SUR PC WINDOWS :
+   Double-cliquez simplement sur l'application :
+   👉  Super Video AI.exe  (avec l'icône violette officielle)
 
-   ⚠️ ATTENTION SI VOUS ÊTES SUR WINDOWS (TRÈS IMPORTANT) :
-   Dès la toute première fenêtre de l'installateur, avant de cliquer sur "Install",
-   COCHEZ la case tout en bas :
-   ☑️ "Add Python to PATH" (ou "Ajouter Python aux variables d'environnement").
-   Ensuite, cliquez sur "Install Now".
+   - Aucune fenêtre noire de commande ne s'ouvre.
+   - Lors de la toute première ouverture, une petite fenêtre d'initialisation
+     prépare automatiquement le studio, puis l'application Desktop s'ouvre.
+   - Astuce : Vous pouvez faire Clic droit sur "Super Video AI.exe" ->
+     "Envoyer vers" -> "Bureau (créer un raccourci)" ou "Épingler à la barre
+     des tâches".
 
-   🍏 SI VOUS ÊTES SUR MAC :
-   Suivez simplement les étapes de l'installateur jusqu'à "Installation réussie".
+🍎 SUR MAC (MacBook / iMac) :
+   Double-cliquez simplement sur l'application :
+   👉  Super Video AI.app  (avec l'icône violette officielle)
 
-================================================================================
-ÉTAPE 2 : DÉCOMPRESSER LE DOSSIER DU LOGICIEL
-================================================================================
-1. Si vous avez reçu le dossier sous forme de fichier compressé (.zip), faites
-   un clic-droit dessus > "Extraire tout" (Windows) ou double-cliquez dessus (Mac).
-2. Placez le dossier "super video" extrait à un endroit facile d'accès (par
-   exemple sur votre Bureau).
+   - Vous pouvez aussi glisser "Super Video AI.app" dans votre Dock macOS.
 
-================================================================================
-ÉTAPE 3 : LANCER LE LOGICIEL (EN 1 SEUL CLIC)
-================================================================================
-Ouvrez le dossier "super video" et cliquez sur le lanceur avec son icône :
+--------------------------------------------------------------------------------
+3. PREMIÈRE CONFIGURATION DE VOTRE CLÉ STUDIO
+--------------------------------------------------------------------------------
+1. Cliquez sur le bouton "Clé Studio" en haut à droite de la fenêtre.
+2. Collez votre clé d'accès Studio et cliquez sur "Enregistrer".
+3. Le badge passe au vert ("Connecté") : vous êtes prêt à créer !
 
-🍏 VOUS ÊTES SUR MAC :
----------------------
-👉 Double-cliquez directement sur l'application : "Super Video AI" (avec la belle icône violette)
-   - L'application démarre directement et discrètement en arrière-plan (sans
-     aucune fenêtre noire de terminal).
-   - Votre navigateur Internet s'ouvrira tout seul sur l'interface du studio.
-   - Astuce : Vous pouvez même glisser cette icône "Super Video AI" dans votre
-     dossier Applications ou dans votre Dock en bas de l'écran !
-
-   *(Note de premier lancement : Si votre Mac affiche "Développeur non vérifié",
-   faites simplement un CLIC DROIT sur "Super Video AI" > "Ouvrir" > confirmer "Ouvrir").*
-
-🪟 VOUS ÊTES SUR WINDOWS :
--------------------------
-👉 Double-cliquez sur : "Super Video AI.vbs" (ou sur "lancer.bat")
-   - Tout démarre en tâche de fond de façon discrète et automatique.
-   - Votre navigateur Internet va s'ouvrir tout seul sur l'interface du studio.
-   - Pour avoir l'icône directement sur votre Bureau : double-cliquez une fois
-     sur "Creer_Raccourci_Bureau.bat". Un joli raccourci "Super Video AI" avec
-     son icône violette apparaîtra immédiatement sur votre Bureau !
-
-================================================================================
-ÉTAPE 4 : ACTIVER VOTRE CLÉ STUDIO ET COMMENCER
-================================================================================
-Dès que la page s'ouvre dans votre navigateur Internet :
-
-1. En haut à droite de l'écran, cliquez sur le bouton : [ Clé Studio ]
-2. Collez la clé d'activation qui vous a été fournie (elle commence par "sk-...").
-3. Cliquez sur le bouton violet "Enregistrer la clé Studio".
-4. C'est tout ! Un voyant vert s'allume : vous êtes prêt à animer vos visuels !
-
-================================================================================
-💡 COMMENT UTILISER LE STUDIO AU QUOTIDIEN
-================================================================================
-1. Glissez-déposez votre image ou affiche dans le grand cadre à gauche.
-2. Choisissez votre mode :
-   - "Motion Design Affiche" : Idéal pour animer des affiches sportives,
-     des flyers ou des personnages sans jamais déformer les visages ou couper
-     le haut de l'image.
-   - "Vidéo Libre Cinéma" : Si vous souhaitez une création vidéo libre avec du texte.
-3. Cochez les effets désirés (reflets or, confettis, projecteurs, zoom...).
-4. Cliquez sur le gros bouton "Générer la Vidéo".
-5. Une barre de progression vous indique l'avancement. Dès que c'est fini, la
-   vidéo se lance automatiquement à l'écran et s'enregistre dans votre dossier :
-   📁 super video/outputs/
-
-================================================================================
-🔄 COMMENT RECEVOIR LES MISES À JOUR
-================================================================================
-Les mises à jour se font de façon 100% automatique et transparente :
-1. Une petite cloche en haut de l'écran vous prévient dès qu'une mise à jour
-   est disponible.
-2. Cliquez simplement sur "Mises à jour" puis "Installer la mise à jour".
-3. Le logiciel télécharge les nouveautés et recharge la page tout seul.
-4. Vos vidéos et votre clé Studio ne sont JAMAIS perdues lors d'une mise à jour.
-
-================================================================================
-🛑 COMMENT QUITTER ET COMMENT RELANCER LE LOGICIEL
-================================================================================
-- POUR QUITTER :
-  Fermez simplement la fenêtre noire du Terminal (ou appuyez sur les touches
-  Ctrl + C dans celle-ci) et fermez la page de votre navigateur.
-
-- POUR RELANCER PLUS TARD :
-  Double-cliquez simplement à nouveau sur "lancer.bat" (Windows) ou
-  "lancer.command" (Mac). Tout démarrera instantanément en quelques secondes !
-
-================================================================================
-Bonne création vidéo avec Super Video AI !
+--------------------------------------------------------------------------------
+4. MISES À JOUR EN 1 CLIC
+--------------------------------------------------------------------------------
+- Lorsqu'une nouveauté est disponible, un point orange s'affiche sur le bouton
+  "Mise à jour" en haut à droite de l'application.
+- Cliquez dessus puis sur "Installer la mise à jour maintenant" : l'application
+  se met à jour et se recharge toute seule.
 ================================================================================
