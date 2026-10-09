@@ -293,6 +293,13 @@ async def reveal_video_in_folder(filename: str):
         raise HTTPException(status_code=500, detail=f"Impossible d'ouvrir le dossier : {str(e)}")
 
 
+import importlib
+import app.config
+import app.image_bridge
+import app.agnes_client
+import app.updater
+
+
 @app.get("/api/updates/check")
 async def api_check_updates():
     return check_for_updates()
@@ -303,5 +310,12 @@ async def api_apply_update():
     res = apply_update()
     if not res.get("success"):
         raise HTTPException(status_code=500, detail=res.get("error", "Échec de la mise à jour"))
+    try:
+        importlib.reload(app.config)
+        importlib.reload(app.image_bridge)
+        importlib.reload(app.agnes_client)
+        importlib.reload(app.updater)
+    except Exception:
+        pass
     return res
 

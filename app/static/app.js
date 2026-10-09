@@ -862,26 +862,41 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function applySoftwareUpdate() {
+    const updateProgressBar = document.getElementById("updateProgressBar");
     btnApplyUpdate.disabled = true;
     btnApplyUpdate.classList.add("opacity-50", "cursor-not-allowed");
     btnCancelUpdate.disabled = true;
     btnRecheckUpdate.disabled = true;
     updateProgressBox.classList.remove("hidden");
-    updateProgressLabel.textContent = "Téléchargement et application des fichiers...";
+
+    if (updateProgressBar) {
+      updateProgressBar.classList.remove("animate-pulse");
+      updateProgressBar.style.transition = "width 0.4s ease";
+      updateProgressBar.style.width = "25%";
+    }
+    updateProgressLabel.textContent = "Mise à jour du logiciel : téléchargement des nouveautés (25%)...";
+
+    const stepTimer = setTimeout(() => {
+      if (updateProgressBar) updateProgressBar.style.width = "65%";
+      updateProgressLabel.textContent = "Mise à jour du logiciel : installation des fichiers (65%)...";
+    }, 700);
 
     try {
       const res = await fetch("/api/updates/apply", { method: "POST" });
+      clearTimeout(stepTimer);
       const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data.detail || "Échec de l'installation de la mise à jour");
       }
 
-      updateProgressLabel.textContent = "Mise à jour réussie ! Rechargement de l'application...";
+      if (updateProgressBar) updateProgressBar.style.width = "100%";
+      updateProgressLabel.textContent = "Mise à jour terminée (100%) ! Redémarrage du logiciel...";
       setTimeout(() => {
         window.location.reload();
-      }, 1800);
+      }, 1500);
     } catch (err) {
+      clearTimeout(stepTimer);
       alert("Erreur lors de la mise à jour : " + err.message);
       btnApplyUpdate.disabled = false;
       btnApplyUpdate.classList.remove("opacity-50", "cursor-not-allowed");
