@@ -153,10 +153,12 @@ async def update_settings(req: SettingsRequest):
     return {"success": True, "message": "Paramètres enregistrés avec succès !"}
 
 
-@app.post("/api/settings/reset")
-async def reset_settings_to_pool():
-    reset_to_free_pool()
-    return {"success": True, "message": "Retour au Pool Gratuit Super Video AI (5 vidéos/jour) activé !"}
+@app.post("/api/settings/delete-key")
+async def delete_user_api_key():
+    """Supprime la clé API personnelle de la machine locale."""
+    from app.config import delete_api_key
+    delete_api_key()
+    return {"success": True, "message": "Votre clé API a été définitivement supprimée de votre ordinateur."}
 
 
 @app.post("/api/upload")

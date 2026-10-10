@@ -60,6 +60,16 @@ def save_api_key(api_key: str) -> None:
     os.environ["STUDIO_API_KEY"] = clean_key
 
 
+def delete_api_key() -> None:
+    """Supprime définitivement la clé Studio du fichier .env local et de l'environnement."""
+    legacy_key_env, _ = get_legacy_env_names()
+    if ENV_PATH.exists():
+        set_key(str(ENV_PATH), "STUDIO_API_KEY", "")
+        set_key(str(ENV_PATH), legacy_key_env, "")
+    os.environ.pop("STUDIO_API_KEY", None)
+    os.environ.pop(legacy_key_env, None)
+
+
 def get_provider_mode() -> str:
     """Récupère l'identifiant du moteur sélectionné (default, google_veo, openai_sora, kling_ai, higgsfield, fal_ai, custom)."""
     load_dotenv(dotenv_path=ENV_PATH, override=True)

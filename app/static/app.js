@@ -340,6 +340,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch("/api/settings");
       const data = await res.json();
       const currentKeyStatus = document.getElementById("currentKeyStatus");
+      const btnDeleteKey = document.getElementById("btnDeleteKey");
       const mode = data.provider_mode || "default";
 
       if (data.configured) {
@@ -349,6 +350,7 @@ document.addEventListener("DOMContentLoaded", () => {
           currentKeyStatus.textContent = `${data.masked_key} ✓`;
           currentKeyStatus.className = "text-emerald-400 font-mono font-bold";
         }
+        if (btnDeleteKey) btnDeleteKey.classList.remove("hidden");
       } else {
         apiKeyDot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
         apiKeyText.textContent = "⚠️ Configurer Clé API";
@@ -356,6 +358,7 @@ document.addEventListener("DOMContentLoaded", () => {
           currentKeyStatus.textContent = "Non configurée (Requise)";
           currentKeyStatus.className = "text-amber-400 font-mono font-bold";
         }
+        if (btnDeleteKey) btnDeleteKey.classList.add("hidden");
       }
 
       selectProvider.value = PROVIDER_INFO[mode] ? mode : "custom";
@@ -399,6 +402,53 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   if (btnCloseCreatorModal) btnCloseCreatorModal.addEventListener("click", closeCreatorModal);
   if (btnAckCreatorModal) btnAckCreatorModal.addEventListener("click", closeCreatorModal);
+
+  // Copie rapide du numéro de soutien dans le presse-papier
+  const btnCopyPhone = document.getElementById("btnCopyPhone");
+  const copyPhoneLabel = document.getElementById("copyPhoneLabel");
+  if (btnCopyPhone) {
+    btnCopyPhone.addEventListener("click", async () => {
+      const phoneNumber = "(+225) 07 77 62 08 64";
+      try {
+        await navigator.clipboard.writeText(phoneNumber);
+      } catch (e) {
+        const temp = document.createElement("input");
+        temp.value = phoneNumber;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand("copy");
+        document.body.removeChild(temp);
+      }
+      if (copyPhoneLabel) {
+        copyPhoneLabel.textContent = "Copié ✓";
+        setTimeout(() => {
+          copyPhoneLabel.textContent = "Copier";
+        }, 2500);
+      }
+    });
+  }
+
+  // Suppression sécurisée de la clé locale
+  if (btnDeleteKey) {
+    btnDeleteKey.addEventListener("click", async () => {
+      const confirmed = confirm("Voulez-vous vraiment supprimer votre clé API enregistrée sur cet ordinateur ?");
+      if (!confirmed) return;
+
+      try {
+        const res = await fetch("/api/settings/delete-key", { method: "POST" });
+        const data = await res.json();
+        if (res.ok) {
+          showAlert(apiKeyAlert, data.message || "Clé supprimée avec succès.", "success");
+          inputApiKey.value = "";
+          await checkApiKeyStatus();
+        } else {
+          showAlert(apiKeyAlert, data.detail || "Erreur lors de la suppression.", "error");
+        }
+      } catch (err) {
+        showAlert(apiKeyAlert, "Erreur réseau lors de la suppression.", "error");
+      }
+    });
+  }
 
   btnSaveApiKey.addEventListener("click", async () => {
     const key = inputApiKey.value.trim();

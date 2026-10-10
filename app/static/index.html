@@ -637,8 +637,13 @@
           <label class="text-xs font-semibold text-slate-200 block mb-1.5" id="labelApiKeyField">Votre Clé d'Accès Personnelle</label>
           <input type="password" id="inputApiKey" placeholder="Collez votre clé API personnelle ici (ex: sk-... ou AIza...)" class="w-full bg-slate-900 border border-brand-border rounded-xl p-3 text-sm text-slate-200 outline-none focus:border-brand-purple font-mono">
           <div class="flex items-center justify-between mt-1.5 text-[11px] text-slate-400">
-            <span>Statut actuel : <strong id="currentKeyStatus" class="text-slate-300 font-mono">Non configurée</strong></span>
-            <span class="text-slate-500">Chiffrement local</span>
+            <span class="flex items-center gap-1.5">
+              <span>Statut :</span>
+              <strong id="currentKeyStatus" class="text-slate-300 font-mono">Non configurée</strong>
+            </span>
+            <button type="button" id="btnDeleteKey" class="hidden text-[10px] text-rose-400 hover:text-rose-300 hover:underline flex items-center gap-1 transition-colors cursor-pointer" title="Supprimer la clé de cet ordinateur">
+              <span>🗑️</span> <span>Supprimer ma clé</span>
+            </button>
           </div>
         </div>
 
@@ -730,6 +735,35 @@
               <span><strong>Mises à jour régulières gratuites :</strong> J'enrichis constamment le logiciel avec de nouveaux outils via le bouton de mise à jour GitHub intégré.</span>
             </li>
           </ul>
+        </div>
+
+        <!-- Section de soutien volontaire et bienveillant -->
+        <div class="p-3.5 rounded-xl bg-gradient-to-br from-brand-purple/20 via-slate-900 to-brand-cyan/15 border border-brand-purple/40 space-y-2.5">
+          <div class="flex items-center gap-2">
+            <span class="text-rose-400 text-sm">❤️</span>
+            <h5 class="font-bold text-white text-xs">Me soutenir si vous aimez l'application</h5>
+          </div>
+          <p class="text-[11px] text-slate-300 leading-relaxed">
+            Pour être très clair : <strong>Super Video AI est et restera totalement gratuit à vie</strong>. Vous n'avez aucune obligation de payer quoi que ce soit pour utiliser l'application.
+          </p>
+          <p class="text-[11px] text-slate-300 leading-relaxed">
+            Cependant, si cette application vous rend service, vous fait gagner du temps et que vous avez la bonne volonté de soutenir l'effort de développement, la maintenance et les futures fonctionnalités, un geste de soutien ne sera jamais de refus et sera profondément apprécié.
+          </p>
+          
+          <div class="p-2.5 rounded-xl bg-black/60 border border-brand-border flex items-center justify-between gap-3">
+            <div class="space-y-0.5">
+              <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block">Contact Direct &amp; Soutien (Wave / Orange / MTN MoMo)</span>
+              <span class="text-xs font-bold text-brand-cyan font-mono tracking-wide">(+225) 07 77 62 08 64</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button type="button" id="btnCopyPhone" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-semibold text-slate-200 border border-brand-border transition-all flex items-center gap-1 cursor-pointer" title="Copier le numéro">
+                <span>📋</span> <span id="copyPhoneLabel">Copier</span>
+              </button>
+              <a href="https://wa.me/2250777620864?text=Bonjour%20St%C3%A9phane,%20j'utilise%20Super%20Video%20AI%20et%20je%20souhaite%20te%20soutenir%20!" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-bold text-white transition-all flex items-center gap-1 shadow-sm">
+                <span>💬</span> <span>WhatsApp</span>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 
