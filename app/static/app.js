@@ -108,6 +108,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const motionDetailInput = document.getElementById("motionDetailInput");
   const cameraButtons = document.querySelectorAll(".camera-btn");
 
+  // Storyboard & Rédacteur IA Elements
+  const storyboardContainer = document.getElementById("storyboardContainer");
+  const scenesTabList = document.getElementById("scenesTabList");
+  const totalDurationBadge = document.getElementById("totalDurationBadge");
+  const totalDurationText = document.getElementById("totalDurationText");
+  const btnEnhanceMotionPrompt = document.getElementById("btnEnhanceMotionPrompt");
+  const btnEnhanceMotionLabel = document.getElementById("btnEnhanceMotionLabel");
+  const btnEnhanceCinemaPrompt = document.getElementById("btnEnhanceCinemaPrompt");
+  const btnEnhanceCinemaLabel = document.getElementById("btnEnhanceCinemaLabel");
+  const btnGenerateAllScenes = document.getElementById("btnGenerateAllScenes");
+  const generateAllBtnText = document.getElementById("generateAllBtnText");
+  const scenePlayerBar = document.getElementById("scenePlayerBar");
+  const scenePlayerStatus = document.getElementById("scenePlayerStatus");
+  const scenePlayerChips = document.getElementById("scenePlayerChips");
+
   // État local
   let currentStudioMode = "motion"; // "motion" ou "cinema"
   let currentCamera = "push_in";
@@ -116,6 +131,25 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentRatio = "original";
   let detectedImagePreset = null;
   let activeEventSource = null;
+
+  // État Multi-Scènes / Storyboard
+  let scenes = [
+    {
+      id: 1,
+      title: "Scène 1",
+      duration: 5,
+      camera: "push_in",
+      char_lock: "statue_25d",
+      fx: { fxShine: false, fxLights: false, fxSmoke: false, fxWind: false, fxConfetti: false, fxSparks: false },
+      motionDetail: "",
+      cinemaPrompt: "",
+      status: "idle",
+      videoUrl: null,
+      filename: null
+    }
+  ];
+  let activeSceneIndex = 0;
+  let isGeneratingAllScenes = false;
 
   // Éléments de l'écran de démarrage (Splash Screen signé)
   const startupSplash = document.getElementById("startupSplash");
@@ -676,14 +710,344 @@ document.addEventListener("DOMContentLoaded", () => {
     return finalCompiled;
   }
 
-  // 5. Durée Slider
+  // ==========================================
+  // SYSTÈME DE STORYBOARD & MULTI-SCÈNES
+  // ==========================================
+
+  function saveCurrentSceneInputs() {
+    if (!scenes[activeSceneIndex]) return;
+    const s = scenes[activeSceneIndex];
+    s.duration = parseFloat(durationSlider.value) || 5;
+    s.camera = currentCamera;
+
+    const charLockEl = document.querySelector('input[name="char_lock"]:checked');
+    if (charLockEl) s.char_lock = charLockEl.value;
+
+    s.fx = {
+      fxShine: document.getElementById("fxShine")?.checked || false,
+      fxLights: document.getElementById("fxLights")?.checked || false,
+      fxSmoke: document.getElementById("fxSmoke")?.checked || false,
+      fxWind: document.getElementById("fxWind")?.checked || false,
+      fxConfetti: document.getElementById("fxConfetti")?.checked || false,
+      fxSparks: document.getElementById("fxSparks")?.checked || false,
+    };
+
+    if (motionDetailInput) s.motionDetail = motionDetailInput.value;
+    if (cinemaPromptInput) s.cinemaPrompt = cinemaPromptInput.value;
+  }
+
+  function loadSceneInputs(index) {
+    const s = scenes[index];
+    if (!s) return;
+
+    durationSlider.value = s.duration;
+    durationValue.textContent = `${parseFloat(s.duration).toFixed(1)}s`;
+
+    // Caméra
+    currentCamera = s.camera || "push_in";
+    cameraButtons.forEach(btn => {
+      if (btn.getAttribute("data-camera") === currentCamera) {
+        btn.className = "camera-btn active p-2 rounded-xl border border-brand-purple bg-brand-purple/20 text-white text-xs font-semibold flex items-center justify-center gap-1 transition-all";
+      } else {
+        btn.className = "camera-btn p-2 rounded-xl border border-brand-border bg-slate-900/60 text-slate-300 text-xs font-semibold flex items-center justify-center gap-1 hover:bg-slate-800 transition-all";
+      }
+    });
+
+    // Character Lock
+    const charLockRadio = document.querySelector(`input[name="char_lock"][value="${s.char_lock || 'statue_25d'}"]`);
+    if (charLockRadio) {
+      charLockRadio.checked = true;
+      charLockRadio.dispatchEvent(new Event("change"));
+    }
+
+    // Effets FX
+    if (s.fx) {
+      Object.keys(s.fx).forEach(fxId => {
+        const el = document.getElementById(fxId);
+        if (el) {
+          el.checked = !!s.fx[fxId];
+          el.dispatchEvent(new Event("change"));
+        }
+      });
+    }
+
+    // Détail libre & Prompt cinéma
+    if (motionDetailInput) motionDetailInput.value = s.motionDetail || "";
+    if (cinemaPromptInput) cinemaPromptInput.value = s.cinemaPrompt || "";
+
+    updateGenerateButtonLabels();
+  }
+
+  function updateTotalDurationBadge() {
+    const totalSecs = scenes.reduce((acc, sc) => acc + (parseFloat(sc.duration) || 5), 0);
+    if (totalDurationText) {
+      totalDurationText.textContent = `${totalSecs.toFixed(1)}s (${scenes.length} scène${scenes.length > 1 ? 's' : ''})`;
+    }
+    if (btnGenerateAllScenes) {
+      if (scenes.length > 1) {
+        btnGenerateAllScenes.classList.remove("hidden");
+        if (generateAllBtnText) {
+          generateAllBtnText.textContent = `Générer tout le Storyboard (${totalSecs.toFixed(1)}s • ${scenes.length} scènes)`;
+        }
+      } else {
+        btnGenerateAllScenes.classList.add("hidden");
+      }
+    }
+  }
+
+  function updateGenerateButtonLabels() {
+    const curSec = parseFloat(durationSlider.value).toFixed(1);
+    const sceneNum = scenes[activeSceneIndex] ? scenes[activeSceneIndex].id : 1;
+    if (scenes.length > 1) {
+      generateBtnText.textContent = currentStudioMode === "motion"
+        ? `Générer la Scène ${sceneNum} (${curSec}s)`
+        : `Générer la Scène ${sceneNum} (${curSec}s)`;
+    } else {
+      generateBtnText.textContent = currentStudioMode === "motion"
+        ? `Générer le Motion Design (${curSec}s)`
+        : `Générer la vidéo (${curSec}s)`;
+    }
+    updateTotalDurationBadge();
+  }
+
+  function renderScenesTabs() {
+    if (!scenesTabList) return;
+    scenesTabList.innerHTML = "";
+
+    scenes.forEach((s, idx) => {
+      const isActive = idx === activeSceneIndex;
+      const tab = document.createElement("div");
+      tab.className = `group flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all border shrink-0 select-none ${
+        isActive
+          ? "bg-brand-purple/20 text-white border-brand-purple shadow-md shadow-brand-purple/20 font-bold"
+          : "bg-slate-900/60 text-slate-300 border-brand-border/70 hover:bg-slate-800 hover:text-white"
+      }`;
+
+      let icon = "🎬";
+      if (s.status === "ready") icon = "✅";
+      else if (s.status === "generating") icon = "⏳";
+
+      tab.innerHTML = `
+        <span class="text-xs">${icon}</span>
+        <span>Scène ${s.id}</span>
+        <span class="text-[10px] px-1.5 py-0.2 rounded-md ${
+          isActive ? "bg-brand-purple/40 text-brand-cyan" : "bg-slate-800 text-slate-400"
+        }">${parseFloat(s.duration).toFixed(0)}s</span>
+      `;
+
+      if (scenes.length > 1) {
+        const btnDel = document.createElement("button");
+        btnDel.type = "button";
+        btnDel.className = "ml-1 text-slate-400 hover:text-rose-400 p-0.5 rounded transition-colors text-xs leading-none";
+        btnDel.innerHTML = "×";
+        btnDel.title = `Supprimer la Scène ${s.id}`;
+        btnDel.addEventListener("click", (e) => {
+          e.stopPropagation();
+          deleteScene(idx);
+        });
+        tab.appendChild(btnDel);
+      }
+
+      tab.addEventListener("click", () => {
+        if (activeSceneIndex !== idx) {
+          switchActiveScene(idx);
+        }
+      });
+
+      scenesTabList.appendChild(tab);
+    });
+
+    if (scenes.length < 8) {
+      const btnAdd = document.createElement("button");
+      btnAdd.type = "button";
+      btnAdd.className = "flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-brand-cyan bg-slate-900/40 hover:bg-brand-cyan/10 border border-dashed border-brand-cyan/40 hover:border-brand-cyan transition-all shrink-0 active:scale-95";
+      btnAdd.innerHTML = `
+        <span class="text-xs">+</span>
+        <span>Ajouter une scène</span>
+      `;
+      btnAdd.addEventListener("click", addScene);
+      scenesTabList.appendChild(btnAdd);
+    }
+
+    updateTotalDurationBadge();
+  }
+
+  function switchActiveScene(newIndex) {
+    saveCurrentSceneInputs();
+    activeSceneIndex = newIndex;
+    loadSceneInputs(newIndex);
+    renderScenesTabs();
+  }
+
+  function addScene() {
+    saveCurrentSceneInputs();
+    const newId = scenes.length + 1;
+    const prevScene = scenes[scenes.length - 1];
+    scenes.push({
+      id: newId,
+      title: `Scène ${newId}`,
+      duration: prevScene ? prevScene.duration : 5,
+      camera: "push_in",
+      char_lock: prevScene ? prevScene.char_lock : "statue_25d",
+      fx: prevScene ? { ...prevScene.fx } : { fxShine: true },
+      motionDetail: "",
+      cinemaPrompt: "",
+      status: "idle",
+      videoUrl: null,
+      filename: null
+    });
+    activeSceneIndex = scenes.length - 1;
+    loadSceneInputs(activeSceneIndex);
+    renderScenesTabs();
+  }
+
+  function deleteScene(index) {
+    if (scenes.length <= 1) return;
+    saveCurrentSceneInputs();
+    scenes.splice(index, 1);
+    scenes.forEach((s, i) => {
+      s.id = i + 1;
+      s.title = `Scène ${i + 1}`;
+    });
+    if (activeSceneIndex >= scenes.length) {
+      activeSceneIndex = scenes.length - 1;
+    }
+    loadSceneInputs(activeSceneIndex);
+    renderScenesTabs();
+    renderScenePlayerBar();
+  }
+
+  function renderScenePlayerBar() {
+    if (!scenePlayerBar || !scenePlayerChips) return;
+    const readyScenes = scenes.filter(s => s.videoUrl);
+    if (readyScenes.length === 0) {
+      scenePlayerBar.classList.add("hidden");
+      return;
+    }
+
+    scenePlayerBar.classList.remove("hidden");
+    scenePlayerChips.innerHTML = "";
+
+    scenes.forEach((s, idx) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      const isReady = !!s.videoUrl;
+      chip.className = `px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all border ${
+        isReady
+          ? (idx === activeSceneIndex
+              ? "bg-brand-cyan/20 text-brand-cyan border-brand-cyan shadow-sm"
+              : "bg-slate-800 text-slate-200 border-brand-border hover:bg-slate-700")
+          : "bg-slate-900/50 text-slate-500 border-brand-border/40 cursor-not-allowed opacity-60"
+      }`;
+
+      chip.innerHTML = `
+        <span>${isReady ? "▶" : "⏳"}</span>
+        <span>Scène ${s.id}</span>
+        <span class="text-[10px] text-slate-400">(${parseFloat(s.duration).toFixed(0)}s)</span>
+      `;
+
+      if (isReady) {
+        chip.addEventListener("click", () => {
+          activeSceneIndex = idx;
+          loadSceneInputs(idx);
+          renderScenesTabs();
+          showCompletedVideo(s.videoUrl, s.filename);
+          if (scenePlayerStatus) {
+            scenePlayerStatus.textContent = `Lecture : Scène ${s.id}`;
+          }
+        });
+      }
+
+      scenePlayerChips.appendChild(chip);
+    });
+  }
+
+  // ==========================================
+  // RÉDACTEUR IA SUPER VIDEO (MAGIC PROMPT)
+  // ==========================================
+
+  async function triggerPromptEnhancement(isCinema = true) {
+    saveCurrentSceneInputs();
+    const targetInput = isCinema ? cinemaPromptInput : motionDetailInput;
+    const targetLabel = isCinema ? btnEnhanceCinemaLabel : btnEnhanceMotionLabel;
+    const targetBtn = isCinema ? btnEnhanceCinemaPrompt : btnEnhanceMotionPrompt;
+
+    if (!targetInput || !targetBtn) return;
+
+    const originalText = targetInput.value.trim();
+    const originalLabel = targetLabel ? targetLabel.textContent : "Rédacteur IA SuperVideo";
+
+    targetBtn.disabled = true;
+    if (targetLabel) targetLabel.textContent = "Rédaction magique...";
+    targetBtn.classList.add("opacity-80");
+
+    try {
+      const res = await fetch("/api/prompt/enhance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: originalText,
+          mode: currentStudioMode,
+          scene_number: scenes[activeSceneIndex].id
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success && data.enhanced_prompt) {
+        targetInput.value = data.enhanced_prompt;
+        saveCurrentSceneInputs();
+
+        // Animation de mise en valeur visuelle
+        targetInput.classList.add("ring-2", "ring-brand-cyan", "bg-slate-900/90");
+        setTimeout(() => {
+          targetInput.classList.remove("ring-2", "ring-brand-cyan");
+        }, 1500);
+      } else {
+        alert("Le rédacteur IA n'a pas pu parfaire le prompt : " + (data.detail || "erreur"));
+      }
+    } catch (err) {
+      console.error("Erreur enhance prompt:", err);
+      alert("Erreur de connexion avec le rédacteur IA.");
+    } finally {
+      targetBtn.disabled = false;
+      if (targetLabel) targetLabel.textContent = originalLabel;
+      targetBtn.classList.remove("opacity-80");
+    }
+  }
+
+  if (btnEnhanceCinemaPrompt) {
+    btnEnhanceCinemaPrompt.addEventListener("click", () => triggerPromptEnhancement(true));
+  }
+  if (btnEnhanceMotionPrompt) {
+    btnEnhanceMotionPrompt.addEventListener("click", () => triggerPromptEnhancement(false));
+  }
+
+  // 5. Durée Slider & Synchronisation
   durationSlider.addEventListener("input", (e) => {
     const val = parseFloat(e.target.value).toFixed(1);
     durationValue.textContent = `${val}s`;
-    generateBtnText.textContent = currentStudioMode === "motion" 
-      ? `Générer le Motion Design (${val}s)`
-      : `Générer la vidéo (${val}s)`;
+    if (scenes[activeSceneIndex]) {
+      scenes[activeSceneIndex].duration = parseFloat(val);
+    }
+    updateGenerateButtonLabels();
+    renderScenesTabs();
   });
+
+  if (motionDetailInput) {
+    motionDetailInput.addEventListener("input", () => {
+      if (scenes[activeSceneIndex]) {
+        scenes[activeSceneIndex].motionDetail = motionDetailInput.value;
+      }
+    });
+  }
+
+  if (cinemaPromptInput) {
+    cinemaPromptInput.addEventListener("input", () => {
+      if (scenes[activeSceneIndex]) {
+        scenes[activeSceneIndex].cinemaPrompt = cinemaPromptInput.value;
+      }
+    });
+  }
 
   // 6. Cadrage Ratio
   ratioButtons.forEach(btn => {
@@ -699,34 +1063,156 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // 7. Génération de Vidéo
+  // ==========================================
+  // MOTEUR D'EXÉCUTION DE RENDU VIDÉO
+  // ==========================================
+
+  function calculateTargetDimensions() {
+    let targetWidth = null;
+    let targetHeight = null;
+
+    if (currentRatio === "original" && detectedImagePreset) {
+      targetWidth = detectedImagePreset.recommended_width;
+      targetHeight = detectedImagePreset.recommended_height;
+    } else if (currentRatio === "1:1") {
+      targetWidth = 960;
+      targetHeight = 960;
+    } else if (currentRatio === "3:4") {
+      targetWidth = 832;
+      targetHeight = 1088;
+    } else if (currentRatio === "4:3") {
+      targetWidth = 1088;
+      targetHeight = 832;
+    } else if (currentRatio === "9:16") {
+      targetWidth = 704;
+      targetHeight = 1280;
+    } else if (currentRatio === "16:9") {
+      targetWidth = 1280;
+      targetHeight = 704;
+    }
+    return { targetWidth, targetHeight };
+  }
+
+  function generateScenePromise(sceneIdx, sceneNum, totalScenesCount = 1) {
+    return new Promise(async (resolve, reject) => {
+      saveCurrentSceneInputs();
+      const sc = scenes[sceneIdx];
+      if (!sc) return reject(new Error("Scène introuvable"));
+
+      let prompt = "";
+      const isMotionDesign = currentStudioMode === "motion";
+
+      if (isMotionDesign) {
+        prompt = compileMotionDesignPrompt();
+      } else {
+        prompt = (sc.cinemaPrompt || (cinemaPromptInput ? cinemaPromptInput.value.trim() : "")).trim();
+        if (!prompt) {
+          return reject(new Error(`Veuillez renseigner un prompt pour la Scène ${sceneNum}.`));
+        }
+      }
+
+      sc.status = "generating";
+      renderScenesTabs();
+
+      const { targetWidth, targetHeight } = calculateTargetDimensions();
+
+      const payload = {
+        prompt: prompt,
+        image_url: currentImageUrl,
+        model: modelSelect.value,
+        mode: "keyframe",
+        seconds: String(sc.duration),
+        size: sizeSelect.value,
+        aspect_ratio: currentRatio,
+        target_width: targetWidth,
+        target_height: targetHeight,
+        motion_design_mode: isMotionDesign
+      };
+
+      try {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          if (res.status === 401) {
+            settingsModal.classList.remove("hidden");
+            showAlert(apiKeyAlert, "Veuillez renseigner votre clé d'accès Studio pour continuer.", "error");
+          }
+          throw new Error(data.detail || "Échec de création de la tâche vidéo.");
+        }
+
+        const videoId = data.data.video_id || data.data.task_id || data.data.id;
+        checkApiKeyStatus();
+
+        if (activeEventSource) {
+          activeEventSource.close();
+        }
+
+        const scenePrefix = totalScenesCount > 1 ? `[Scène ${sceneNum}/${totalScenesCount}] ` : "";
+        updateProgress(15, `${scenePrefix}Tâche transmise au moteur Super Video AI...`);
+
+        activeEventSource = new EventSource(`/api/stream/${videoId}?model=${encodeURIComponent(modelSelect.value)}`);
+
+        activeEventSource.onmessage = (event) => {
+          try {
+            const info = JSON.parse(event.data);
+
+            if (info.status === "completed") {
+              updateProgress(100, `${scenePrefix}Téléchargement local terminé !`);
+              activeEventSource.close();
+              sc.status = "ready";
+              sc.videoUrl = info.local_url;
+              sc.filename = info.filename;
+              renderScenesTabs();
+              renderScenePlayerBar();
+              resolve(info);
+            } else if (info.status === "failed") {
+              activeEventSource.close();
+              sc.status = "error";
+              renderScenesTabs();
+              reject(new Error(info.error || "Rendu échoué"));
+            } else if (info.status === "in_progress") {
+              const prog = Math.max(20, info.progress || 35);
+              updateProgress(prog, `${scenePrefix}${info.queue_message || `Calcul et rendu vidéo en cours (${prog}%)...`}`);
+            } else if (info.status === "queued") {
+              const qProg = Math.max(10, info.progress || 12);
+              updateProgress(qProg, `${scenePrefix}${info.queue_message || "En file d'attente de rendu..."}`);
+            }
+          } catch (e) {
+            console.error("Erreur parsing SSE:", e);
+          }
+        };
+
+        activeEventSource.onerror = () => {
+          console.warn("Connexion flux interrompue.");
+        };
+
+      } catch (err) {
+        sc.status = "error";
+        renderScenesTabs();
+        reject(err);
+      }
+    });
+  }
+
+  // 7. Génération de la Scène Active
   btnGenerate.addEventListener("click", async () => {
     if (!currentImageUrl) {
       alert("Veuillez charger une image source à animer.");
       return;
     }
 
-    let prompt = "";
-    const isMotionDesign = currentStudioMode === "motion";
-
-    if (isMotionDesign) {
-      prompt = compileMotionDesignPrompt();
-    } else {
-      prompt = cinemaPromptInput ? cinemaPromptInput.value.trim() : "";
-      if (!prompt) {
-        alert("Veuillez saisir une description de la scène cinématographique ou choisir un preset.");
-        if (cinemaPromptInput) cinemaPromptInput.focus();
-        return;
-      }
-    }
-
-    // Désactivation du bouton
     btnGenerate.disabled = true;
+    if (btnGenerateAllScenes) btnGenerateAllScenes.disabled = true;
+
     generateBtnText.textContent = "Lancement de la tâche...";
     playerBadge.textContent = "Génération...";
     playerBadge.className = "text-xs px-2 py-0.5 rounded-full bg-brand-violet/20 text-brand-purple font-medium";
 
-    // Affichage de l'overlay de processing
     playerPlaceholder.classList.add("hidden");
     videoPlayer.classList.add("hidden");
     btnDownload.classList.add("hidden");
@@ -735,109 +1221,77 @@ document.addEventListener("DOMContentLoaded", () => {
     updateProgress(5, "Initialisation du moteur Super Video AI...");
 
     try {
-      // Calcul des dimensions exactes pour garantir zéro coupure de tête ou de trophée
-      let targetWidth = null;
-      let targetHeight = null;
-
-      if (currentRatio === "original" && detectedImagePreset) {
-        targetWidth = detectedImagePreset.recommended_width;
-        targetHeight = detectedImagePreset.recommended_height;
-      } else if (currentRatio === "1:1") {
-        targetWidth = 960;
-        targetHeight = 960;
-      } else if (currentRatio === "3:4") {
-        targetWidth = 832;
-        targetHeight = 1088;
-      } else if (currentRatio === "4:3") {
-        targetWidth = 1088;
-        targetHeight = 832;
-      } else if (currentRatio === "9:16") {
-        targetWidth = 704;
-        targetHeight = 1280;
-      } else if (currentRatio === "16:9") {
-        targetWidth = 1280;
-        targetHeight = 704;
-      }
-
-      const payload = {
-        prompt: prompt,
-        image_url: currentImageUrl,
-        model: modelSelect.value,
-        mode: "keyframe",
-        seconds: String(durationSlider.value),
-        size: sizeSelect.value,
-        aspect_ratio: currentRatio,
-        target_width: targetWidth,
-        target_height: targetHeight,
-        motion_design_mode: isMotionDesign
-      };
-
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        if (res.status === 401) {
-          settingsModal.classList.remove("hidden");
-          showAlert(apiKeyAlert, "Veuillez renseigner votre clé d'accès Studio pour continuer.", "error");
-        }
-        throw new Error(data.detail || "Échec de création de la tâche vidéo.");
-      }
-
-      const videoId = data.data.video_id || data.data.task_id || data.data.id;
-      checkApiKeyStatus();
-      startProgressStream(videoId, modelSelect.value);
-
+      const curScene = scenes[activeSceneIndex];
+      const result = await generateScenePromise(activeSceneIndex, curScene.id, 1);
+      showCompletedVideo(result.local_url, result.filename);
+      loadHistory();
+      finishProcessing(true);
     } catch (err) {
       alert("Erreur de génération : " + err.message);
       finishProcessing(false);
+    } finally {
+      if (btnGenerateAllScenes) btnGenerateAllScenes.disabled = false;
     }
   });
 
-  function startProgressStream(videoId, modelName) {
-    if (activeEventSource) {
-      activeEventSource.close();
-    }
-
-    updateProgress(15, "Tâche transmise au moteur Super Video AI. Analyse du visuel...");
-
-    activeEventSource = new EventSource(`/api/stream/${videoId}?model=${encodeURIComponent(modelName)}`);
-
-    activeEventSource.onmessage = (event) => {
-      try {
-        const info = JSON.parse(event.data);
-
-        if (info.status === "completed") {
-          updateProgress(100, "Téléchargement local du fichier MP4 terminé !");
-          activeEventSource.close();
-          setTimeout(() => {
-            showCompletedVideo(info.local_url, info.filename);
-            loadHistory();
-            finishProcessing(true);
-          }, 800);
-        } else if (info.status === "failed") {
-          activeEventSource.close();
-          alert("La génération a échoué : " + (info.error || "Raison inconnue"));
-          finishProcessing(false);
-        } else if (info.status === "in_progress") {
-          const prog = Math.max(20, info.progress || 35);
-          updateProgress(prog, info.queue_message || `Calcul et rendu vidéo en cours (${prog}%)...`);
-        } else if (info.status === "queued") {
-          const qProg = Math.max(10, info.progress || 12);
-          updateProgress(qProg, info.queue_message || "En file d'attente sur les serveurs de rendu Super Video AI...");
-        }
-      } catch (e) {
-        console.error("Erreur parsing SSE:", e);
+  // 7b. Génération séquentielle de tout le Storyboard
+  if (btnGenerateAllScenes) {
+    btnGenerateAllScenes.addEventListener("click", async () => {
+      if (!currentImageUrl) {
+        alert("Veuillez charger une image source à animer.");
+        return;
       }
-    };
 
-    activeEventSource.onerror = () => {
-      console.warn("Connexion flux interrompue.");
-    };
+      btnGenerate.disabled = true;
+      btnGenerateAllScenes.disabled = true;
+      isGeneratingAllScenes = true;
+
+      playerBadge.textContent = "Storyboard...";
+      playerBadge.className = "text-xs px-2 py-0.5 rounded-full bg-brand-cyan/20 text-brand-cyan font-medium";
+
+      playerPlaceholder.classList.add("hidden");
+      videoPlayer.classList.add("hidden");
+      btnDownload.classList.add("hidden");
+      fileInfoBox.classList.add("hidden");
+      processingOverlay.classList.remove("hidden");
+
+      let firstVideoUrl = null;
+      let firstFilename = null;
+
+      try {
+        for (let i = 0; i < scenes.length; i++) {
+          activeSceneIndex = i;
+          loadSceneInputs(i);
+          renderScenesTabs();
+
+          updateProgress(5, `Initialisation de la Scène ${scenes[i].id} sur ${scenes.length}...`);
+          const res = await generateScenePromise(i, scenes[i].id, scenes.length);
+
+          if (!firstVideoUrl) {
+            firstVideoUrl = res.local_url;
+            firstFilename = res.filename;
+          }
+        }
+
+        if (firstVideoUrl) {
+          activeSceneIndex = 0;
+          loadSceneInputs(0);
+          showCompletedVideo(firstVideoUrl, firstFilename);
+        }
+        loadHistory();
+        finishProcessing(true);
+        alert(`Félicitations ! Toutes les ${scenes.length} scènes de votre Storyboard ont été générées avec succès !`);
+      } catch (err) {
+        alert("Erreur lors de la génération du Storyboard : " + err.message);
+        finishProcessing(false);
+      } finally {
+        isGeneratingAllScenes = false;
+        btnGenerate.disabled = false;
+        btnGenerateAllScenes.disabled = false;
+      }
+    });
   }
+
 
   function updateProgress(percent, statusMsg) {
     progressPercentageText.textContent = `${percent}%`;
@@ -864,6 +1318,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (currentVideoFilename) {
       fileInfoBox.classList.remove("hidden");
       savedPathLabel.textContent = `outputs/${currentVideoFilename}`;
+    }
+
+    if (scenes[activeSceneIndex]) {
+      scenes[activeSceneIndex].videoUrl = videoUrl;
+      scenes[activeSceneIndex].filename = currentVideoFilename;
+      scenes[activeSceneIndex].status = "ready";
+      renderScenesTabs();
+      renderScenePlayerBar();
     }
 
     playerBadge.textContent = "Terminé ✓";
@@ -919,8 +1381,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function finishProcessing(success) {
     btnGenerate.disabled = false;
-    const dur = parseFloat(durationSlider.value).toFixed(1);
-    generateBtnText.textContent = `Générer la vidéo (${dur}s)`;
+    if (btnGenerateAllScenes) btnGenerateAllScenes.disabled = false;
+    updateGenerateButtonLabels();
 
     if (!success) {
       processingOverlay.classList.add("hidden");
@@ -1088,8 +1550,11 @@ document.addEventListener("DOMContentLoaded", () => {
   btnRecheckUpdate.addEventListener("click", () => checkForUpdates(false));
   btnApplyUpdate.addEventListener("click", applySoftwareUpdate);
 
-  // Vérification automatique et silencieuse au lancement du studio
-  setTimeout(() => checkForUpdates(true), 2500);
+  // Initialisation du Storyboard et premier onglet
+  renderScenesTabs();
+  loadSceneInputs(0);
+  updateTotalDurationBadge();
 
   btnRefreshHistory.addEventListener("click", loadHistory);
 });
+

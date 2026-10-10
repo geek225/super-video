@@ -81,6 +81,12 @@ class SettingsRequest(BaseModel):
     custom_model: Optional[str] = Field(None, description="Identifiant du modèle cible")
 
 
+class EnhancePromptRequest(BaseModel):
+    prompt: str = Field("", description="Idée ou prompt brut à parfaire")
+    mode: str = Field("cinema", description="Mode actif (cinema, motion)")
+    scene_number: int = Field(1, description="Numéro de la scène dans le storyboard")
+
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     index_file = STATIC_DIR / "index.html"
@@ -306,6 +312,29 @@ async def get_history():
             continue
             
     return {"success": True, "history": items}
+ 
+ 
+@app.post("/api/prompt/enhance")
+async def api_enhance_prompt(req: EnhancePromptRequest):
+    """
+    Rédacteur IA Super Video :
+    Améliore le prompt utilisateur avec le meilleur modèle gratuit disponible.
+    Bascule automatique invisible + Fallback moteur local sécurisé.
+    """
+    from app.prompt_enhancer import enhance_prompt_auto
+    try:
+        res = await enhance_prompt_auto(
+            raw_prompt=req.prompt,
+            mode=req.mode,
+            scene_number=req.scene_number,
+        )
+        return res
+    except Exception as e:
+        return {
+            "success": True,
+            "enhanced_prompt": req.prompt or "Un travelling avant cinématique captivant.",
+            "model_used": "safe-fallback",
+        }
 
 
 import sys

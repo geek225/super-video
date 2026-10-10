@@ -33,6 +33,10 @@ _SEALED_RELAY_NODES: List[str] = [
     "D~yVFVoYA&ytrsrE2N4afBprHW~Mk#*(Vl)EV)Cyi)KwT444{hh=47nLO>@AD`0EeE+D!",
 ]
 
+# Rédacteur IA Super Video (Passerelle Xkiro / agrégateur modèles gratuits) chiffré
+_SEALED_WRITER_URL = "D~yVFVoYA&ytoKSt-tj8{vP~@7`nQ#MqFD~542>^"
+_SEALED_WRITER_KEY = "D~v>*fOPg*W@?A;S7?_NpRP8Rme*@Ywz9ZLzE0@34ZkIs^Cf%qks+ec!K_U`V?B(!|8&PS{UCbD"
+
 # Mémorisation en mémoire de la clé ayant créé chaque video_id pour le suivi SSE
 _TASK_KEY_MAP: Dict[str, str] = {}
 
@@ -80,6 +84,22 @@ def get_relay_node_urls() -> List[str]:
         except Exception:
             continue
     return urls
+
+
+def get_writer_base_url() -> str:
+    """Retourne l'URL de base sécurisée de la passerelle du rédacteur IA."""
+    try:
+        return unseal_secret(_SEALED_WRITER_URL).rstrip("/")
+    except Exception:
+        return "https://api.xkiro.com/v1"
+
+
+def get_writer_api_key() -> str:
+    """Retourne la clé API sécurisée du rédacteur IA."""
+    try:
+        return unseal_secret(_SEALED_WRITER_KEY).strip()
+    except Exception:
+        return ""
 
 
 def sanitize_provider_text(text: str) -> str:
