@@ -100,35 +100,31 @@ async def serve_index():
 
 @app.get("/api/settings")
 async def get_settings():
-    key = get_api_key()
     user_key = get_user_api_key()
     base_url = get_base_url()
     provider_mode = get_provider_mode()
     custom_model = get_custom_model()
     is_default = (base_url == get_default_base_url()) and (provider_mode in ("", "default"))
-    _, is_shared_pool = resolve_candidate_keys(user_key)
-    if not is_default:
-        is_shared_pool = False
 
-    configured = bool(user_key) if not is_default else bool(key)
-    if not is_shared_pool and len(user_key) >= 8:
+    configured = bool(user_key)
+    if configured and len(user_key) >= 8:
         masked = f"{user_key[:4]}...{user_key[-4:]}"
     elif configured:
-        masked = "Pool Gratuit Actif"
+        masked = "Clé personnelle active"
     else:
         masked = "Non configurée"
-    used_today, limit_today = get_shared_quota_status(BASE_DIR)
+
     return {
         "configured": configured,
-        "masked_key": masked if configured else "",
+        "masked_key": masked,
         "base_url": "default" if is_default else base_url,
         "provider_mode": provider_mode or "default",
         "custom_model": custom_model,
         "is_default_engine": is_default,
-        "is_shared_pool": is_shared_pool,
-        "pool_size": len(get_shared_pool_keys()),
-        "quota_used": used_today,
-        "quota_limit": limit_today,
+        "is_shared_pool": False,
+        "pool_size": 0,
+        "quota_used": 0,
+        "quota_limit": 0,
     }
 
 
@@ -181,11 +177,14 @@ async def upload_image(file: UploadFile = File(...)):
 
 @app.post("/api/generate")
 async def create_video_task(req: GenerateRequest):
-    key = get_api_key()
-    if not key:
-        raise HTTPException(status_code=401, detail="Clé d'activation Studio manquante. Veuillez la configurer dans les paramètres.")
-    
-    client = AgnesClient(api_key=get_user_api_key())
+    user_key = get_user_api_key()
+    if not user_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Veuillez renseigner votre clé d'accès Agnes personnelle dans les Paramètres (icône ⚙️) pour lancer vos rendus vidéo."
+        )
+
+    client = AgnesClient(api_key=user_key)
     try:
         task_data = client.create_video_task(
             prompt=req.prompt,

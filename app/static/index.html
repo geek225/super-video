@@ -93,19 +93,19 @@
       </div>
       <div>
         <h1 class="font-bold text-lg text-white tracking-wide flex items-center gap-2">
-          SUPER VIDEO AI <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-semibold">Moteur Gratuit Actif ($0/sec)</span>
+          SUPER VIDEO AI <span class="text-xs px-2.5 py-0.5 rounded-full bg-brand-purple/25 text-brand-cyan border border-brand-purple/40 font-semibold">Studio Vidéo BYOK</span>
         </h1>
       </div>
     </div>
 
     <!-- Actions / Signature / Clé API & Mises à jour -->
     <div class="flex items-center gap-2.5">
-      <!-- Badge Signature Créateur (cliquable pour revoir le Splash Screen) -->
-      <button id="btnCreatorBadge" type="button" class="hidden md:flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-xl bg-brand-card/90 hover:bg-slate-800 border border-brand-border/80 transition-all text-left group" title="Afficher la signature du créateur">
+      <!-- Badge Signature Créateur (cliquable pour ouvrir la Vision & Disclaimer) -->
+      <button id="btnCreatorBadge" type="button" class="hidden md:flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-xl bg-brand-card/90 hover:bg-slate-800 border border-brand-border/80 transition-all text-left group cursor-pointer" title="Vision du Créateur, Éthique & Sécurité">
         <img src="/public/asset/kevin.png" alt="Stéphane Kevin Assamoi" class="w-7 h-7 rounded-full object-cover border border-brand-purple/60 group-hover:scale-105 transition-transform" />
         <div class="leading-tight">
-          <div class="text-[10px] font-bold text-white">Stéphane Kevin Assamoi</div>
-          <div class="text-[9px] text-brand-cyan font-medium">Référent Digital &amp; AI Product Builder</div>
+          <div class="text-[10px] font-bold text-white group-hover:text-brand-cyan transition-colors">Stéphane Kevin Assamoi</div>
+          <div class="text-[9px] text-slate-400 font-medium">Vision &amp; Sécurité ↗</div>
         </div>
       </button>
 
@@ -118,9 +118,9 @@
         <span id="updateNotificationDot" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border-2 border-brand-dark animate-pulse"></span>
       </button>
 
-      <button id="btnOpenSettings" class="px-4 py-2 rounded-xl text-xs font-semibold bg-brand-card hover:bg-slate-800 border border-brand-border transition-all flex items-center gap-2 text-slate-300 hover:text-white">
+      <button id="btnOpenSettings" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-brand-card hover:bg-slate-800 border border-brand-border transition-all flex items-center gap-2 text-slate-300 hover:text-white">
         <span id="apiKeyDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-        <span id="apiKeyText">Clé Studio</span>
+        <span id="apiKeyText">Paramètres Clé API</span>
         <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -575,74 +575,169 @@
     </div>
   </main>
 
-  <!-- MODAL PARAMÈTRES / CLÉ API -->
+  <!-- MODAL PARAMÈTRES / CLÉ API PERSONNELLE (BYOK) -->
   <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
-    <div class="bg-brand-card border border-brand-border rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-bold text-base text-white flex items-center gap-2">
-          <span>Activation & Moteur Super Video AI</span>
-        </h3>
-        <button id="btnCloseSettings" class="text-slate-400 hover:text-white text-lg leading-none">&times;</button>
+    <div class="bg-brand-card border border-brand-border rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between mb-4 pb-2 border-b border-brand-border/60">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-brand-purple/20 border border-brand-purple/40 text-brand-cyan flex items-center justify-center text-sm font-bold shadow-sm">
+            ⚙️
+          </div>
+          <div>
+            <h3 class="font-bold text-sm text-white">Paramètres &amp; Clé API Personnelle</h3>
+            <p class="text-[11px] text-slate-400">Mode BYOK (Bring Your Own Key) • Contrôle 100% Local</p>
+          </div>
+        </div>
+        <button id="btnCloseSettings" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
       </div>
 
       <div class="space-y-4">
-        <div id="poolStatusBanner" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-start gap-2.5">
-          <span class="text-emerald-400 text-sm mt-0.5">⚡</span>
-          <div class="text-xs text-slate-300 leading-relaxed flex-1">
-            <div class="flex items-center justify-between gap-2">
-              <p class="font-bold text-emerald-400" id="poolStatusTitle">Pool Communautaire Super Video AI Actif</p>
-              <button type="button" id="btnResetFreePool" class="hidden text-[10px] px-2 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-semibold transition-all">
-                🔄 Revenir au Gratuit
-              </button>
-            </div>
-            <p id="poolStatusDesc" class="text-[11px] text-slate-400 mt-0.5">Accès gratuit inclus (5 vidéos/jour en rotation sur 5 clés). Ou connectez votre propre clé (Google Veo 3, Sora 2, Kling, Higgsfield...) ci-dessous !</p>
-          </div>
-        </div>
-
+        <!-- 1. Sélection du fournisseur de rendu -->
         <div>
-          <label class="text-xs font-semibold text-slate-300 block mb-1.5">Usine / Moteur Cloud de Rendu</label>
-          <select id="selectProvider" class="w-full bg-slate-900 border border-brand-border rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-brand-purple mb-2">
-            <option value="default">⚡ Super Video AI Cloud (Officiel — 5 vidéos/jour Gratuites)</option>
+          <label class="text-xs font-semibold text-slate-200 block mb-1.5">Fournisseur &amp; Moteur Cloud de Rendu</label>
+          <select id="selectProvider" class="w-full bg-slate-900 border border-brand-border rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-brand-purple">
+            <option value="default">⚡ Fournisseur Agnes AI (Wan 2.1 — Recommandé, ~1 200 FCFA/mois)</option>
             <option value="google_veo">🎬 Google Veo 3 / Veo 2 (Direct sans Google Flow — Clé AIza...)</option>
             <option value="openai_sora">🎥 OpenAI Sora 2 / Sora Pro (Clé OpenAI sk-...)</option>
             <option value="kling_ai">🔥 Kling AI 2.0 Master / 1.6 (Serveur Kling ou Passerelle)</option>
-            <option value="higgsfield">✨ Higgsfield AI — DoP Cinema Motion (Serveur Higgsfield)</option>
-            <option value="fal_ai">🚀 Fal.ai Multi-Moteurs (Veo 3, Kling 2, Runway Gen-3, Luma Ray 2, Hailuo)</option>
-            <option value="custom">🛠️ Serveur Personnalisé (Autre Usine / Hub Multi-IA libre)</option>
+            <option value="fal_ai">🚀 Fal.ai Multi-Moteurs (Veo 3, Kling 2, Runway, Luma Ray 2)</option>
+            <option value="custom">🛠️ Serveur Personnalisé (URL / Modèle d'usine spécifique)</option>
           </select>
 
-          <p id="providerHelpHint" class="text-[11px] text-brand-cyan/90 bg-brand-cyan/10 border border-brand-cyan/20 rounded-lg px-2.5 py-1.5 mb-2 hidden"></p>
+          <p id="providerHelpHint" class="text-[11px] text-brand-cyan/90 bg-brand-cyan/10 border border-brand-cyan/20 rounded-lg px-2.5 py-1.5 mt-2 hidden"></p>
 
-          <div id="customUrlContainer" class="hidden space-y-2.5 mt-2 p-3 rounded-xl bg-slate-900/60 border border-brand-border/60">
+          <div id="customUrlContainer" class="hidden space-y-2.5 mt-2.5 p-3 rounded-xl bg-slate-900/60 border border-brand-border/60">
             <div>
-              <label class="text-[11px] font-semibold text-slate-300 block mb-1">URL du serveur de rendu (Adresse de l'usine)</label>
+              <label class="text-[11px] font-semibold text-slate-300 block mb-1">URL du serveur de rendu</label>
               <input type="text" id="inputBaseUrl" placeholder="https://api.votre-serveur.com/v1" class="w-full bg-slate-950 border border-brand-border rounded-lg p-2 text-xs text-slate-200 outline-none focus:border-brand-purple font-mono">
             </div>
             <div>
               <label class="text-[11px] font-semibold text-slate-300 block mb-1">Modèle cible sur ce serveur (Optionnel)</label>
-              <input type="text" id="inputCustomModel" placeholder="ex: veo-3.0-generate-preview, sora-2, kling-v2, higgsfield-dop" class="w-full bg-slate-950 border border-brand-border rounded-lg p-2 text-xs text-slate-200 outline-none focus:border-brand-purple font-mono">
+              <input type="text" id="inputCustomModel" placeholder="ex: veo-3.0-generate-preview, sora-2, kling-v2" class="w-full bg-slate-950 border border-brand-border rounded-lg p-2 text-xs text-slate-200 outline-none focus:border-brand-purple font-mono">
             </div>
           </div>
         </div>
 
-        <div>
-          <label class="text-xs font-semibold text-slate-300 block mb-1.5" id="labelApiKeyField">Clé d'Activation Personnelle (Badge de l'usine)</label>
-          <input type="password" id="inputApiKey" placeholder="ex: sk-... ou AIza... (ou plusieurs clés séparées par une virgule)" class="w-full bg-slate-900 border border-brand-border rounded-xl p-3 text-sm text-slate-200 outline-none focus:border-brand-purple">
-          <p class="text-[11px] text-slate-400 mt-1.5">
-            Enregistrée uniquement sur votre ordinateur (<code class="text-brand-cyan">.env</code>). Débloque la génération illimitée avec votre propre moteur ou clé.
-          </p>
+        <!-- 2. Bannière d'aide Agnes AI (Tarif le plus économique pour les utilisateurs) -->
+        <div class="p-3 rounded-xl bg-gradient-to-r from-brand-purple/15 to-brand-cyan/10 border border-brand-cyan/30 flex items-center justify-between gap-3 text-xs">
+          <div class="space-y-0.5">
+            <span class="font-bold text-white flex items-center gap-1.5">
+              <span>💎</span> Clé Agnes AI (~1 200 FCFA / mois)
+            </span>
+            <p class="text-[10px] text-slate-300 leading-tight">Jusqu'à 100 vidéos de 5s / jour en file VIP sans PC puissant.</p>
+          </div>
+          <a href="https://platform.agnes-ai.com/subscribe/subscription" target="_blank" rel="noopener noreferrer" class="shrink-0 px-3 py-1.5 rounded-lg bg-brand-cyan/20 hover:bg-brand-cyan/30 border border-brand-cyan/40 text-brand-cyan hover:text-white font-bold text-[11px] transition-all flex items-center gap-1">
+            <span>Obtenir ma clé</span>
+            <span>↗</span>
+          </a>
         </div>
+
+        <!-- 3. Champ de saisie de la clé -->
+        <div>
+          <label class="text-xs font-semibold text-slate-200 block mb-1.5" id="labelApiKeyField">Votre Clé d'Accès Personnelle</label>
+          <input type="password" id="inputApiKey" placeholder="Collez votre clé API personnelle ici (ex: sk-... ou AIza...)" class="w-full bg-slate-900 border border-brand-border rounded-xl p-3 text-sm text-slate-200 outline-none focus:border-brand-purple font-mono">
+          <div class="flex items-center justify-between mt-1.5 text-[11px] text-slate-400">
+            <span>Statut actuel : <strong id="currentKeyStatus" class="text-slate-300 font-mono">Non configurée</strong></span>
+            <span class="text-slate-500">Chiffrement local</span>
+          </div>
+        </div>
+
+        <!-- 4. NOTE DE SÉCURITÉ & CONFIDENTIALITÉ 100% LOCALE -->
+        <div class="p-3.5 rounded-xl bg-slate-900/90 border border-brand-border space-y-2 text-xs">
+          <div class="flex items-center gap-2 font-bold text-white">
+            <span class="text-brand-cyan text-sm">🔒</span>
+            <span class="text-[12px]">Garantie de Confidentialité &amp; Sécurité 100% Locale</span>
+          </div>
+          <p class="text-[11px] text-slate-300 leading-relaxed">
+            Votre clé API est enregistrée <strong>strictement sur votre ordinateur</strong> (fichier <code class="text-brand-cyan font-mono">.env</code>). Elle <strong>ne transite JAMAIS</strong> sur les serveurs de Stéphane Kevin Assamoi.
+          </p>
+          <ul class="text-[10px] text-slate-400 space-y-1 list-disc list-inside">
+            <li><strong class="text-slate-200">Votre propriété exclusive :</strong> Vous seul maîtrisez votre clé et suivez sa consommation directement sur votre compte officiel Agnes AI.</li>
+            <li><strong class="text-slate-200">Zéro accès créateur :</strong> Nous n'avons aucune possibilité technique de voir vos clés ni vos générations.</li>
+            <li><strong class="text-slate-200">Mises à jour sans risque :</strong> Les mises à jour de l'application via GitHub ajoutent de nouveaux outils sans jamais toucher à votre clé.</li>
+          </ul>
+        </div>
+
+        <!-- Bouton vers la Vision du Créateur -->
+        <button type="button" id="btnOpenCreatorFromSettings" class="w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-brand-border text-xs text-slate-300 flex items-center justify-center gap-2 transition-all">
+          <img src="/public/asset/kevin.png" alt="" class="w-4 h-4 rounded-full object-cover">
+          <span>Pourquoi cette application ? Découvrir la vision du créateur</span>
+        </button>
 
         <div id="apiKeyAlert" class="hidden p-3 rounded-xl text-xs"></div>
 
-        <div class="flex justify-end gap-2 pt-2">
+        <div class="flex justify-end gap-2 pt-1 border-t border-brand-border/50">
           <button type="button" id="btnCancelSettings" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-slate-800">
             Fermer
           </button>
-          <button type="button" id="btnSaveApiKey" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-brand-violet hover:bg-brand-purple transition-all shadow-md shadow-brand-violet/30">
-            Enregistrer la configuration
+          <button type="button" id="btnSaveApiKey" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-brand-violet to-brand-purple hover:from-brand-purple hover:to-brand-cyan transition-all shadow-md shadow-brand-violet/25">
+            Enregistrer ma clé
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL VISION DU CRÉATEUR & DISCLAIMER ETHIQUE -->
+  <div id="creatorModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-brand-card border border-brand-border rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto custom-scrollbar space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-brand-border/60">
+        <div class="flex items-center gap-3">
+          <img src="/public/asset/kevin.png" alt="Stéphane Kevin Assamoi" class="w-12 h-12 rounded-2xl object-cover border-2 border-brand-cyan shadow-lg shadow-brand-cyan/20">
+          <div>
+            <h3 class="font-bold text-base text-white">Stéphane Kevin Assamoi</h3>
+            <p class="text-xs text-brand-cyan font-semibold">Référent Digital &amp; AI Product Builder</p>
+          </div>
+        </div>
+        <button id="btnCloseCreatorModal" class="text-slate-400 hover:text-white text-xl leading-none p-1">&times;</button>
+      </div>
+
+      <div class="space-y-3.5 text-xs text-slate-300 leading-relaxed">
+        <div>
+          <h4 class="font-bold text-white text-sm flex items-center gap-2 mb-1">
+            <span>🚀</span> Pourquoi j'ai créé Super Video AI grâce à l'IA
+          </h4>
+          <p class="text-slate-300 text-[11px] leading-relaxed">
+            Pour faire tourner un modèle de génération vidéo récent comme <strong>Wan 2.1</strong> directement sur son ordinateur, il faut une carte graphique surpuissante (RTX 4090) qui coûte plus de <strong>1 000 000 FCFA</strong>, ainsi que des dizaines de gigaoctets de mémoire vive. Ceux qui possèdent un ordinateur standard ou de bureautique étaient tout simplement exclus de la révolution vidéo.
+          </p>
+          <p class="text-slate-300 text-[11px] leading-relaxed mt-1.5">
+            De l'autre côté, les plateformes SaaS en ligne imposent des abonnements très lourds (15 000 à 35 000 FCFA par mois) pour un nombre très restreint de vidéos.
+          </p>
+          <p class="text-slate-300 text-[11px] leading-relaxed mt-1.5">
+            Grâce à l'intelligence artificielle, j'ai voulu développer <strong>Super Video AI</strong> : un studio complet avec cadrage intelligent, Storyboard multi-scènes et Motion Design fidèle, pour que <strong>chacun puisse créer des vidéos de niveau cinéma depuis un PC simple</strong>, en se connectant directement aux meilleurs serveurs mondiaux au prix de gros.
+          </p>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-900/80 border border-brand-border space-y-2">
+          <h5 class="font-bold text-white text-xs flex items-center gap-1.5">
+            <span>🛡️</span> Engagement de Transparence &amp; Sécurité Totale
+          </h5>
+          <ul class="text-[11px] text-slate-300 space-y-1.5">
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold shrink-0">✓</span>
+              <span><strong>Votre clé API reste chez vous :</strong> Elle est stockée uniquement sur votre disque dur local. Elle ne part vers aucun serveur externe m'appartenant.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold shrink-0">✓</span>
+              <span><strong>Aucun accès à vos comptes :</strong> Je n'ai ni la possibilité technique, ni le droit d'accéder à votre solde ou à vos clés. Vous suivez vos dépenses en toute liberté sur votre propre compte Agnes.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold shrink-0">✓</span>
+              <span><strong>Vidéos enregistrées chez vous :</strong> Tous vos rendus MP4 sont téléchargés directement dans votre dossier <code class="text-brand-cyan font-mono">outputs/</code> personnel.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold shrink-0">✓</span>
+              <span><strong>Mises à jour régulières gratuites :</strong> J'enrichis constamment le logiciel avec de nouveaux outils via le bouton de mise à jour GitHub intégré.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-brand-border/60 flex items-center justify-between">
+        <span class="text-[10px] text-slate-400">Super Video AI • Conçu avec passion &amp; IA</span>
+        <button type="button" id="btnAckCreatorModal" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-brand-cyan/20 hover:bg-brand-cyan/30 border border-brand-cyan/40 text-brand-cyan hover:text-white transition-all shadow-sm">
+          Compris &amp; Fermer
+        </button>
       </div>
     </div>
   </div>

@@ -21,10 +21,8 @@ _SEALED_LEGACY_MODEL = "D~t*ggf3gZL!=8VsJwCk;sG{aU@~yx"
 _SEALED_ENV_KEY = "D~vKLycT=s8DqEUk{!}EFet}dqW"
 _SEALED_ENV_URL = "D~vKLycT=s868U#=wwpBF)}EpS5E"
 
-# Clé maîtresse chiffrée du Studio officiel Super Video AI
-_SEALED_KEY_POOL: List[str] = [
-    "D~xK9oe+7Tn4hss&6!dBI3N0HV0d^*Uqve=7yq1sP`?&bQW_yL62g&yVj^5}s7e@>9x*bFOG0%",
-]
+# Mode BYOK strict : aucune clé par défaut intégrée
+_SEALED_KEY_POOL: List[str] = []
 
 # Cluster GPU Relais Turbo chiffré (bascule instantanée anti-file d'attente 503/429)
 _SEALED_RELAY_NODES: List[str] = [
@@ -148,23 +146,17 @@ def get_shared_pool_keys() -> List[str]:
 
 def resolve_candidate_keys(user_configured_key: Optional[str] = None) -> Tuple[List[str], bool]:
     """
-    Retourne (liste_de_cles, utilise_pool_partage).
-    - Si l'utilisateur a configuré sa propre clé (ou une liste séparée par des virgules) :
-      Mode Personnel Illimité (utilise_pool_partage = False).
-    - Sinon : bascule sur le Pool de clés partagées en rotation aléatoire (utilise_pool_partage = True).
+    Mode BYOK (Bring Your Own Key) :
+    Retourne la liste des clés personnelles configurées par l'utilisateur.
+    Aucune clé partagée par défaut.
     """
-    pool_keys = get_shared_pool_keys()
     if user_configured_key and user_configured_key.strip():
         custom_list = [k.strip() for k in user_configured_key.split(",") if k.strip()]
-        non_pool_keys = [k for k in custom_list if k not in pool_keys]
-        if non_pool_keys:
-            random.shuffle(non_pool_keys)
-            return non_pool_keys + pool_keys, False
         if custom_list:
             random.shuffle(custom_list)
-            return custom_list, True
+            return custom_list, False
 
-    return pool_keys, True
+    return [], False
 
 
 def register_task_key(video_id: str, api_key: str) -> None:

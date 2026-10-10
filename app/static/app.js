@@ -209,9 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btnSkipSplash.addEventListener("click", hideStartupSplash);
   }
 
-  if (btnCreatorBadge) {
-    btnCreatorBadge.addEventListener("click", showStartupSplash);
-  }
+
 
   // 1. Initialisation : vérifier la clé API et charger l'historique
   checkApiKeyStatus();
@@ -336,48 +334,28 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 2. Gestion de la clé API et du Pool Hybride (Solution C + Multi-Moteurs)
+  // 2. Gestion de la clé API Personnelle (Mode BYOK)
   async function checkApiKeyStatus() {
     try {
       const res = await fetch("/api/settings");
       const data = await res.json();
-      const poolTitle = document.getElementById("poolStatusTitle");
-      const poolDesc = document.getElementById("poolStatusDesc");
+      const currentKeyStatus = document.getElementById("currentKeyStatus");
       const mode = data.provider_mode || "default";
-
-      if (btnResetFreePool) {
-        if (!data.is_shared_pool || mode !== "default") {
-          btnResetFreePool.classList.remove("hidden");
-        } else {
-          btnResetFreePool.classList.add("hidden");
-        }
-      }
 
       if (data.configured) {
         apiKeyDot.className = "w-2 h-2 rounded-full bg-emerald-400";
-        if (data.is_shared_pool && mode === "default") {
-          const remaining = Math.max(0, (data.quota_limit || 5) - (data.quota_used || 0));
-          apiKeyText.textContent = `Studio Actif (${remaining}/${data.quota_limit || 5} aujourd'hui)`;
-          if (poolTitle) poolTitle.textContent = `Pool Communautaire Actif (${remaining}/${data.quota_limit || 5} vidéos restantes aujourd'hui)`;
-          if (poolDesc) poolDesc.textContent = `Rotation multi-clés automatique active (${data.pool_size || 5} clés dans le coffre-fort). Ou connectez votre propre serveur/clé (Veo 3, Sora 2, Kling, Higgsfield) ci-dessous !`;
-        } else {
-          const engineNames = {
-            default: "Studio Pro",
-            google_veo: "Google Veo",
-            openai_sora: "OpenAI Sora",
-            kling_ai: "Kling AI",
-            higgsfield: "Higgsfield",
-            fal_ai: "Fal.ai Hub",
-            custom: "Serveur Custom"
-          };
-          const eLabel = engineNames[mode] || "Clé Pro";
-          apiKeyText.textContent = `${eLabel} : ${data.masked_key} (Illimité)`;
-          if (poolTitle) poolTitle.textContent = `Mode Personnel Illimité Actif (${eLabel}) ✓`;
-          if (poolDesc) poolDesc.textContent = `Votre clé (${data.masked_key}) est connectée à ${eLabel} sans limite journalière.`;
+        apiKeyText.textContent = `Clé Active (${data.masked_key})`;
+        if (currentKeyStatus) {
+          currentKeyStatus.textContent = `${data.masked_key} ✓`;
+          currentKeyStatus.className = "text-emerald-400 font-mono font-bold";
         }
       } else {
         apiKeyDot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
-        apiKeyText.textContent = "Clé requise pour ce moteur";
+        apiKeyText.textContent = "⚠️ Configurer Clé API";
+        if (currentKeyStatus) {
+          currentKeyStatus.textContent = "Non configurée (Requise)";
+          currentKeyStatus.className = "text-amber-400 font-mono font-bold";
+        }
       }
 
       selectProvider.value = PROVIDER_INFO[mode] ? mode : "custom";
@@ -401,20 +379,26 @@ document.addEventListener("DOMContentLoaded", () => {
   btnCloseSettings.addEventListener("click", closeSettings);
   btnCancelSettings.addEventListener("click", closeSettings);
 
-  if (btnResetFreePool) {
-    btnResetFreePool.addEventListener("click", async () => {
-      try {
-        const res = await fetch("/api/settings/reset", { method: "POST" });
-        if (res.ok) {
-          showAlert(apiKeyAlert, "Retour au Pool Gratuit Super Video AI (5 vidéos/jour) activé !", "success");
-          inputApiKey.value = "";
-          await checkApiKeyStatus();
-        }
-      } catch (err) {
-        showAlert(apiKeyAlert, "Erreur lors de la réinitialisation.", "error");
-      }
-    });
-  }
+  // Modal Vision & Éthique du Créateur
+  const creatorModal = document.getElementById("creatorModal");
+  const btnOpenCreatorFromSettings = document.getElementById("btnOpenCreatorFromSettings");
+  const btnCloseCreatorModal = document.getElementById("btnCloseCreatorModal");
+  const btnAckCreatorModal = document.getElementById("btnAckCreatorModal");
+
+  const openCreatorModal = () => {
+    if (creatorModal) creatorModal.classList.remove("hidden");
+  };
+  const closeCreatorModal = () => {
+    if (creatorModal) creatorModal.classList.add("hidden");
+  };
+
+  if (btnCreatorBadge) btnCreatorBadge.addEventListener("click", openCreatorModal);
+  if (btnOpenCreatorFromSettings) btnOpenCreatorFromSettings.addEventListener("click", () => {
+    closeSettings();
+    openCreatorModal();
+  });
+  if (btnCloseCreatorModal) btnCloseCreatorModal.addEventListener("click", closeCreatorModal);
+  if (btnAckCreatorModal) btnAckCreatorModal.addEventListener("click", closeCreatorModal);
 
   btnSaveApiKey.addEventListener("click", async () => {
     const key = inputApiKey.value.trim();

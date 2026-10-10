@@ -800,18 +800,9 @@ class AgnesClient:
 
         if not candidates:
             raise AgnesAPIError(
-                "Aucune clé d'activation disponible pour ce serveur. Veuillez renseigner votre clé dans 'Studio Actif'.",
+                "Aucune clé API personnelle configurée. Veuillez ouvrir les Paramètres (icône ⚙️) et renseigner votre clé Agnes AI pour démarrer vos rendus vidéo.",
                 status_code=401,
             )
-
-        if is_shared_pool:
-            used_today, limit_today = get_shared_quota_status(BASE_DIR)
-            if used_today >= limit_today:
-                raise AgnesAPIError(
-                    f"Quota gratuit journalier atteint ({limit_today}/{limit_today} vidéos aujourd'hui sur le Pool partagé). "
-                    "Revenez demain ou connectez votre propre Clé / Serveur (Veo 3, Sora, Kling, Fal.ai) pour générer en illimité !",
-                    status_code=429,
-                )
 
         # Première tentative immédiate avec la première clé candidate sur le serveur primaire
         first_key = candidates[0]
