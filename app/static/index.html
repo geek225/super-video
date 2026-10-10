@@ -135,17 +135,46 @@
     <!-- COLONNE GAUCHE : STUDIO & CONTRÔLES (7 colonnes) -->
     <div class="lg:col-span-6 xl:col-span-6 flex flex-col gap-5">
 
-      <!-- Upload Zone Visuel -->
+      <!-- 1. STORYBOARD MULTI-SCÈNES (En tête pour piloter toute la scène active) -->
+      <div id="storyboardContainer" class="p-4 rounded-2xl bg-brand-card/95 border border-brand-border space-y-3 shadow-xl backdrop-blur-sm">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-brand-purple to-brand-cyan text-white flex items-center justify-center text-sm shadow-md shadow-brand-purple/20">
+              🎞️
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-white uppercase tracking-wider">Storyboard & Plans Séquences</span>
+                <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-brand-cyan/20 text-brand-cyan font-semibold border border-brand-cyan/30">Multi-Plans</span>
+              </div>
+              <p class="text-[10px] text-slate-400">Cliquez sur un plan pour définir son image et son prompt</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <span id="totalDurationBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-brand-cyan/15 text-brand-cyan border border-brand-cyan/30 flex items-center gap-1 shadow-sm">
+              <span>⏱️ Total :</span>
+              <span id="totalDurationText">5.0s (1 scène)</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Onglets des Scènes avec miniatures -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar" id="scenesTabList">
+          <!-- Injecté dynamiquement par JavaScript -->
+        </div>
+      </div>
+
+      <!-- 2. Upload Zone Visuel de la Scène Active -->
       <div class="bg-brand-card/90 border border-brand-border/70 rounded-2xl p-5 shadow-xl backdrop-blur-sm">
         <div class="flex items-center justify-between mb-3">
           <label class="text-sm font-bold text-white flex items-center gap-2">
-            <span>Visuel Source</span>
-            <span class="text-xs text-slate-400 font-normal">(PNG, JPG, WebP jusqu'à 15 Mo)</span>
+            <span id="uploadSceneTitle">Visuel de la Scène 1</span>
+            <span class="text-xs text-slate-400 font-normal">(PNG, JPG, WebP)</span>
           </label>
           <div class="flex items-center gap-2">
-            <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/20 font-medium">
-              Option 1 : Bridge Auto 24h
-            </span>
+            <button type="button" id="btnReusePrevImage" class="hidden text-[10px] font-semibold px-2 py-0.5 rounded bg-brand-cyan/15 text-brand-cyan hover:bg-brand-cyan/25 border border-brand-cyan/30 transition-all flex items-center gap-1">
+              <span>📋</span> Reprendre l'image précédente
+            </button>
             <span id="uploadBadge" class="text-xs text-emerald-400 hidden font-medium flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Prête
             </span>
@@ -162,7 +191,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
             </div>
-            <p class="text-sm font-semibold text-slate-200">Glissez-déposez votre visuel ici</p>
+            <p id="uploadEmptyText" class="text-sm font-semibold text-slate-200">Glissez-déposez le visuel de la Scène 1 ici</p>
             <p class="text-xs text-slate-400">ou cliquez pour parcourir vos fichiers</p>
           </div>
 
@@ -205,35 +234,6 @@
             <span class="text-sm">🎬</span>
             <span>Vidéo Libre Cinéma</span>
           </button>
-        </div>
-
-        <!-- STORYBOARD MULTI-SCÈNES (Plans 10s, 30s, 1min+) -->
-        <div id="storyboardContainer" class="p-3 rounded-2xl bg-slate-900/90 border border-brand-border space-y-2.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-lg bg-brand-purple/20 text-brand-purple flex items-center justify-center text-xs">
-                🎞️
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-bold text-white uppercase tracking-wider">Storyboard & Multi-Scènes</span>
-                  <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-brand-cyan/20 text-brand-cyan font-semibold border border-brand-cyan/30">Longue Vidéo</span>
-                </div>
-                <p class="text-[10px] text-slate-400">Assemblez plusieurs scènes pour composer un film complet (10s, 30s, 1min+)</p>
-              </div>
-            </div>
-            <div class="text-right">
-              <span id="totalDurationBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-brand-cyan/15 text-brand-cyan border border-brand-cyan/30 flex items-center gap-1 shadow-sm">
-                <span>⏱️</span>
-                <span id="totalDurationText">5.0s (1 scène)</span>
-              </span>
-            </div>
-          </div>
-
-          <!-- Onglets des Scènes -->
-          <div class="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar" id="scenesTabList">
-            <!-- Injecté dynamiquement par JavaScript -->
-          </div>
         </div>
 
         <!-- PANNEAU 1 : STUDIO MOTION DESIGN GUIDÉ (Par défaut) -->
@@ -336,7 +336,7 @@
           <!-- 4. Consigne Complémentaire Libre (Optionnelle) -->
           <div>
             <div class="flex items-center justify-between mb-1.5">
-              <label class="text-xs font-bold uppercase tracking-wider text-slate-300">4. Précision / Détail libre (Facultatif)</label>
+              <label class="text-xs font-bold uppercase tracking-wider text-slate-300" id="motionDetailTitle">4. Précision / Détail libre (Scène 1)</label>
               <!-- Bouton Rédacteur IA Motion -->
               <button type="button" id="btnEnhanceMotionPrompt" class="group relative px-2.5 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-brand-violet to-brand-purple hover:from-brand-purple hover:to-brand-cyan text-white shadow-md shadow-brand-violet/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-1.5 border border-brand-purple/40">
                 <span class="inline-block animate-bounce text-xs">🤖</span>
@@ -359,7 +359,7 @@
           </div>
           <div>
             <div class="flex items-center justify-between mb-1.5">
-              <label class="text-xs font-bold uppercase tracking-wider text-slate-300">Prompt Cinématique Libre</label>
+              <label class="text-xs font-bold uppercase tracking-wider text-slate-300" id="cinemaPromptTitle">Prompt Cinématique Libre (Scène 1)</label>
               <!-- Bouton Rédacteur IA Cinéma -->
               <button type="button" id="btnEnhanceCinemaPrompt" class="group relative px-2.5 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-brand-violet via-brand-purple to-brand-cyan hover:from-brand-purple hover:to-brand-cyan text-white shadow-md shadow-brand-purple/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-1.5 border border-brand-cyan/40">
                 <span class="inline-block animate-bounce text-xs">🤖</span>

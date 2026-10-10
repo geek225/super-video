@@ -123,6 +123,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const scenePlayerStatus = document.getElementById("scenePlayerStatus");
   const scenePlayerChips = document.getElementById("scenePlayerChips");
 
+  // Titres contextuels de Scène
+  const uploadSceneTitle = document.getElementById("uploadSceneTitle");
+  const uploadEmptyText = document.getElementById("uploadEmptyText");
+  const btnReusePrevImage = document.getElementById("btnReusePrevImage");
+  const cinemaPromptTitle = document.getElementById("cinemaPromptTitle");
+  const motionDetailTitle = document.getElementById("motionDetailTitle");
+
   // État local
   let currentStudioMode = "motion"; // "motion" ou "cinema"
   let currentCamera = "push_in";
@@ -144,8 +151,14 @@ document.addEventListener("DOMContentLoaded", () => {
       motionDetail: "",
       cinemaPrompt: "",
       status: "idle",
+      imageUrl: null,
+      previewUrl: null,
+      localImagePath: null,
+      filename: null,
+      fileSize: null,
+      detectedPreset: null,
       videoUrl: null,
-      filename: null
+      videoFilename: null
     }
   ];
   let activeSceneIndex = 0;
@@ -528,6 +541,17 @@ document.addEventListener("DOMContentLoaded", () => {
         imageFilename.textContent = d.filename;
         imageFileSize.textContent = formatBytes(d.size_bytes);
 
+        // Association immédiate du visuel à la scène active
+        if (scenes[activeSceneIndex]) {
+          scenes[activeSceneIndex].imageUrl = d.public_url;
+          scenes[activeSceneIndex].previewUrl = d.preview_url;
+          scenes[activeSceneIndex].localImagePath = d.local_path;
+          scenes[activeSceneIndex].filename = d.filename;
+          scenes[activeSceneIndex].fileSize = d.size_bytes;
+          scenes[activeSceneIndex].detectedPreset = d;
+          renderScenesTabs();
+        }
+
         uploadLoadingState.classList.add("hidden");
         uploadPreviewState.classList.remove("hidden");
         uploadBadge.classList.remove("hidden");
@@ -549,6 +573,17 @@ document.addEventListener("DOMContentLoaded", () => {
       ratioDetectedInfo.classList.add("hidden");
       ratioDetectedInfo.classList.remove("flex");
     }
+
+    if (scenes[activeSceneIndex]) {
+      scenes[activeSceneIndex].imageUrl = null;
+      scenes[activeSceneIndex].previewUrl = null;
+      scenes[activeSceneIndex].localImagePath = null;
+      scenes[activeSceneIndex].filename = null;
+      scenes[activeSceneIndex].fileSize = null;
+      scenes[activeSceneIndex].detectedPreset = null;
+      renderScenesTabs();
+    }
+
     uploadLoadingState.classList.add("hidden");
     uploadPreviewState.classList.add("hidden");
     uploadEmptyState.classList.remove("hidden");
@@ -743,6 +778,46 @@ document.addEventListener("DOMContentLoaded", () => {
     durationSlider.value = s.duration;
     durationValue.textContent = `${parseFloat(s.duration).toFixed(1)}s`;
 
+    // Titres dynamiques de la scène
+    if (uploadSceneTitle) uploadSceneTitle.textContent = `Visuel de la Scène ${s.id}`;
+    if (uploadEmptyText) uploadEmptyText.textContent = `Glissez-déposez le visuel de la Scène ${s.id} ici`;
+    if (cinemaPromptTitle) cinemaPromptTitle.textContent = `Prompt Cinématique Libre (Scène ${s.id})`;
+    if (motionDetailTitle) motionDetailTitle.textContent = `4. Précision / Détail libre (Scène ${s.id})`;
+
+    // Bouton de reprise rapide de l'image de la scène précédente
+    if (btnReusePrevImage) {
+      const prevScene = index > 0 ? scenes[index - 1] : null;
+      if (prevScene && prevScene.imageUrl && !s.imageUrl) {
+        btnReusePrevImage.classList.remove("hidden");
+        btnReusePrevImage.innerHTML = `<span>📋</span> Reprendre l'image de la Scène ${prevScene.id}`;
+      } else {
+        btnReusePrevImage.classList.add("hidden");
+      }
+    }
+
+    // Affichage ou réinitialisation du visuel de cette scène
+    if (s.imageUrl) {
+      currentImageUrl = s.imageUrl;
+      currentLocalImagePath = s.localImagePath;
+      detectedImagePreset = s.detectedPreset;
+      imagePreview.src = s.previewUrl || s.imageUrl;
+      imageFilename.textContent = s.filename || `visuel_scene_${s.id}.png`;
+      imageFileSize.textContent = formatBytes(s.fileSize || 0);
+
+      uploadEmptyState.classList.add("hidden");
+      uploadLoadingState.classList.add("hidden");
+      uploadPreviewState.classList.remove("hidden");
+      uploadBadge.classList.remove("hidden");
+    } else {
+      currentImageUrl = null;
+      currentLocalImagePath = null;
+      detectedImagePreset = null;
+      uploadPreviewState.classList.add("hidden");
+      uploadLoadingState.classList.add("hidden");
+      uploadEmptyState.classList.remove("hidden");
+      uploadBadge.classList.add("hidden");
+    }
+
     // Caméra
     currentCamera = s.camera || "push_in";
     cameraButtons.forEach(btn => {
@@ -776,6 +851,26 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cinemaPromptInput) cinemaPromptInput.value = s.cinemaPrompt || "";
 
     updateGenerateButtonLabels();
+  }
+
+  // Écouteur pour le bouton de reprise d'image de la scène précédente
+  if (btnReusePrevImage) {
+    btnReusePrevImage.addEventListener("click", () => {
+      if (activeSceneIndex > 0) {
+        const prev = scenes[activeSceneIndex - 1];
+        const cur = scenes[activeSceneIndex];
+        if (prev && prev.imageUrl && cur) {
+          cur.imageUrl = prev.imageUrl;
+          cur.previewUrl = prev.previewUrl;
+          cur.localImagePath = prev.localImagePath;
+          cur.filename = prev.filename;
+          cur.fileSize = prev.fileSize;
+          cur.detectedPreset = prev.detectedPreset;
+          loadSceneInputs(activeSceneIndex);
+          renderScenesTabs();
+        }
+      }
+    });
   }
 
   function updateTotalDurationBadge() {
@@ -823,12 +918,19 @@ document.addEventListener("DOMContentLoaded", () => {
           : "bg-slate-900/60 text-slate-300 border-brand-border/70 hover:bg-slate-800 hover:text-white"
       }`;
 
-      let icon = "🎬";
-      if (s.status === "ready") icon = "✅";
-      else if (s.status === "generating") icon = "⏳";
+      // Vignette visuelle miniature ou icône
+      let thumbHtml = "";
+      if (s.previewUrl || s.imageUrl) {
+        thumbHtml = `<img src="${s.previewUrl || s.imageUrl}" alt="" class="w-5 h-5 rounded object-cover border border-brand-cyan/40 shrink-0">`;
+      } else {
+        let icon = "🎬";
+        if (s.status === "ready") icon = "✅";
+        else if (s.status === "generating") icon = "⏳";
+        thumbHtml = `<span class="text-xs shrink-0">${icon}</span>`;
+      }
 
       tab.innerHTML = `
-        <span class="text-xs">${icon}</span>
+        ${thumbHtml}
         <span>Scène ${s.id}</span>
         <span class="text-[10px] px-1.5 py-0.2 rounded-md ${
           isActive ? "bg-brand-purple/40 text-brand-cyan" : "bg-slate-800 text-slate-400"
@@ -893,8 +995,14 @@ document.addEventListener("DOMContentLoaded", () => {
       motionDetail: "",
       cinemaPrompt: "",
       status: "idle",
+      imageUrl: null,
+      previewUrl: null,
+      localImagePath: null,
+      filename: null,
+      fileSize: null,
+      detectedPreset: null,
       videoUrl: null,
-      filename: null
+      videoFilename: null
     });
     activeSceneIndex = scenes.length - 1;
     loadSceneInputs(activeSceneIndex);
@@ -1111,6 +1219,13 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
+      const sceneImageUrl = sc.imageUrl || currentImageUrl;
+      if (!sceneImageUrl) {
+        sc.status = "idle";
+        renderScenesTabs();
+        return reject(new Error(`Veuillez charger une image pour la Scène ${sceneNum}.`));
+      }
+
       sc.status = "generating";
       renderScenesTabs();
 
@@ -1118,7 +1233,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const payload = {
         prompt: prompt,
-        image_url: currentImageUrl,
+        image_url: sceneImageUrl,
         model: modelSelect.value,
         mode: "keyframe",
         seconds: String(sc.duration),
@@ -1201,8 +1316,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // 7. Génération de la Scène Active
   btnGenerate.addEventListener("click", async () => {
-    if (!currentImageUrl) {
-      alert("Veuillez charger une image source à animer.");
+    saveCurrentSceneInputs();
+    const curScene = scenes[activeSceneIndex];
+    const curImg = curScene ? (curScene.imageUrl || currentImageUrl) : currentImageUrl;
+
+    if (!curImg) {
+      alert(`Veuillez charger une image pour la Scène ${curScene ? curScene.id : 1}.`);
       return;
     }
 
@@ -1221,7 +1340,6 @@ document.addEventListener("DOMContentLoaded", () => {
     updateProgress(5, "Initialisation du moteur Super Video AI...");
 
     try {
-      const curScene = scenes[activeSceneIndex];
       const result = await generateScenePromise(activeSceneIndex, curScene.id, 1);
       showCompletedVideo(result.local_url, result.filename);
       loadHistory();
@@ -1237,9 +1355,24 @@ document.addEventListener("DOMContentLoaded", () => {
   // 7b. Génération séquentielle de tout le Storyboard
   if (btnGenerateAllScenes) {
     btnGenerateAllScenes.addEventListener("click", async () => {
-      if (!currentImageUrl) {
-        alert("Veuillez charger une image source à animer.");
-        return;
+      saveCurrentSceneInputs();
+
+      // Vérification que chaque scène a bien une image et un prompt avant de lancer
+      for (let sIdx = 0; sIdx < scenes.length; sIdx++) {
+        const sc = scenes[sIdx];
+        if (!sc.imageUrl) {
+          switchActiveScene(sIdx);
+          alert(`La Scène ${sc.id} n'a pas d'image. Veuillez lui assigner une image (ou cliquer sur "Reprendre l'image de la scène précédente").`);
+          return;
+        }
+        if (currentStudioMode !== "motion") {
+          const scPrompt = (sc.cinemaPrompt || "").trim();
+          if (!scPrompt) {
+            switchActiveScene(sIdx);
+            alert(`La Scène ${sc.id} n'a pas de prompt cinématique.`);
+            return;
+          }
+        }
       }
 
       btnGenerate.disabled = true;
