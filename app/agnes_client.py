@@ -947,6 +947,24 @@ class AgnesClient:
             with open(meta_file, "w", encoding="utf-8") as f:
                 json.dump(safe_meta, f, indent=2, ensure_ascii=False)
 
+            # Extraction automatique de la vignette JPEG
+            try:
+                import cv2
+                cap = cv2.VideoCapture(str(output_file))
+                for _ in range(3):
+                    r, f = cap.read()
+                    if r and f is not None:
+                        break
+                if not r or f is None:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    r, f = cap.read()
+                cap.release()
+                if r and f is not None:
+                    thumb_path = output_file.with_name(f"{output_file.stem}.thumb.jpg")
+                    cv2.imwrite(str(thumb_path), f, [int(cv2.IMWRITE_JPEG_QUALITY), 88])
+            except Exception:
+                pass
+
             return output_file
         except requests.RequestException as e:
             raise AgnesAPIError(f"Échec du téléchargement du fichier vidéo : {str(e)}")

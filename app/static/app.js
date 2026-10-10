@@ -632,6 +632,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       btn.className = "camera-btn active p-2 rounded-xl border border-brand-purple bg-brand-purple/20 text-white text-xs font-semibold flex items-center justify-center gap-1 transition-all";
       currentCamera = btn.getAttribute("data-camera");
+      updateMotionLiveDirectives();
     });
   });
 
@@ -649,6 +650,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const sp = chip.querySelector("span");
           if (sp) sp.className = "text-xs text-slate-400 font-medium";
         }
+        updateMotionLiveDirectives();
       });
     }
   });
@@ -672,6 +674,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (p) p.className = "text-[10px] text-slate-400 leading-tight";
         }
       });
+      updateMotionLiveDirectives();
     });
   });
 
@@ -689,6 +692,68 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Composant visuel : Directives transmises au moteur IA en direct
+  const motionLiveDirectives = document.getElementById("motionLiveDirectives");
+
+  function updateMotionLiveDirectives() {
+    if (!motionLiveDirectives) return;
+    const directives = [];
+
+    // 1. Sujets
+    const charLockEl = document.querySelector('input[name="char_lock"]:checked');
+    const charVal = charLockEl ? charLockEl.value : "statue_25d";
+    if (charVal === "statue_25d") {
+      directives.push({ icon: "🔒", label: "Poses 100% figées (2.5D)", color: "border-brand-purple/50 bg-brand-purple/20 text-brand-purple" });
+    } else if (charVal === "micro_breathing") {
+      directives.push({ icon: "🫁", label: "Respiration organique", color: "border-brand-purple/50 bg-brand-purple/20 text-brand-purple" });
+    } else {
+      directives.push({ icon: "✨", label: "Micro-regard & micro-vie", color: "border-brand-purple/50 bg-brand-purple/20 text-brand-purple" });
+    }
+
+    // 2. FX
+    const fxMap = [
+      { id: "fxShine", icon: "🏆", label: "Reflets & Brillance" },
+      { id: "fxConfetti", icon: "🎆", label: "Confettis or" },
+      { id: "fxLights", icon: "💡", label: "Projecteurs de stade" },
+      { id: "fxSmoke", icon: "🌫️", label: "Brume atmosphérique" },
+      { id: "fxWind", icon: "💨", label: "Vent sur les tissus" },
+      { id: "fxSparks", icon: "⚡", label: "Étincelles d'énergie" }
+    ];
+    fxMap.forEach(f => {
+      if (document.getElementById(f.id)?.checked) {
+        directives.push({ icon: f.icon, label: f.label, color: "border-brand-cyan/50 bg-brand-cyan/15 text-brand-cyan" });
+      }
+    });
+
+    // 3. Caméra
+    const camMap = {
+      push_in: { icon: "🔍", label: "Travelling avant" },
+      parallax_drift: { icon: "📐", label: "Parallaxe 3D" },
+      pan_horizontal: { icon: "↔️", label: "Travelling latéral" },
+      static: { icon: "⏹️", label: "Caméra fixe" }
+    };
+    const curCam = camMap[currentCamera] || camMap.push_in;
+    directives.push({ icon: curCam.icon, label: curCam.label, color: "border-emerald-500/50 bg-emerald-500/15 text-emerald-300" });
+
+    // 4. Précision libre
+    const detail = motionDetailInput ? motionDetailInput.value.trim() : "";
+    if (detail) {
+      const shortDetail = detail.length > 25 ? detail.slice(0, 23) + "…" : detail;
+      directives.push({ icon: "✍️", label: `"${shortDetail}"`, color: "border-amber-500/50 bg-amber-500/15 text-amber-300" });
+    }
+
+    motionLiveDirectives.innerHTML = directives.map(d => `
+      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-medium ${d.color}">
+        <span>${d.icon}</span>
+        <span>${d.label}</span>
+      </span>
+    `).join("");
+  }
+
+  if (motionDetailInput) {
+    motionDetailInput.addEventListener("input", updateMotionLiveDirectives);
+  }
+
   // Compilateur intelligent de prompt Motion Design
   function compileMotionDesignPrompt() {
     const charLockEl = document.querySelector('input[name="char_lock"]:checked');
@@ -696,51 +761,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let charPrompt = "";
     if (charLockVal === "statue_25d") {
-      charPrompt = "The characters remain completely frozen in their exact poses like a high-end 2.5D broadcast motion graphic. Zero limb displacement, exact closed mouths, exact facial bone structure.";
+      charPrompt = "Character constraint: absolute freeze-frame preservation of original poses and postures. The subjects act as a high-end 2.5D parallax cutout with 100% invariant face geometry, locked facial bone structure, zero morphing, and zero limb displacement.";
     } else if (charLockVal === "micro_breathing") {
-      charPrompt = "The characters remain strictly in their exact poses with subtle natural chest breathing and living micro-movements on place. Facial features and closed eyes 100% frozen.";
+      charPrompt = "Character constraint: living organic presence in place with subtle rhythmic chest breathing and slight micro-motion, strictly preserving face identity, clothing, and posture without walking or morphing.";
     } else {
-      charPrompt = "The characters maintain their exact poses with delicate eye blinks and subtle head drift. Strict facial consistency.";
+      charPrompt = "Character constraint: delicate natural eye blinks and subtle micro-head orientation while preserving exact facial bone structure, clothing, and original poses.";
     }
 
     const fxList = [];
     if (document.getElementById("fxShine")?.checked) {
-      fxList.push("specular golden shimmer, glints, and light sweeps sparkling across the trophy and metallic surfaces");
+      fxList.push("glistening specular light sweeps and sparkling golden reflections running dynamically across the metallic surfaces, trophies, and textures");
     }
     if (document.getElementById("fxConfetti")?.checked) {
-      fxList.push("celebratory golden confetti and stadium victory particles drifting dynamically across the air");
+      fxList.push("celebratory golden victory confetti and shimmering particles drifting gently downward through the air with natural turbulence");
     }
     if (document.getElementById("fxLights")?.checked) {
-      fxList.push("volumetric atmospheric stadium floodlights and dynamic lighting beams crossing in the background");
+      fxList.push("dynamic crossing volumetric stadium floodlights, lens flares, and vibrant atmospheric illumination in the backdrop");
     }
     if (document.getElementById("fxSmoke")?.checked) {
-      fxList.push("subtle cinematic atmospheric fog and haze drifting gently behind the subjects");
+      fxList.push("cinematic atmospheric fog, haze, and low-hanging mist curling softly in the background behind the subjects");
     }
     if (document.getElementById("fxWind")?.checked) {
-      fxList.push("gentle natural breeze fluttering the fabric edges and jerseys");
+      fxList.push("natural gentle breeze fluttering fabric edges, jerseys, and hair with subtle organic cloth physics");
     }
     if (document.getElementById("fxSparks")?.checked) {
-      fxList.push("energetic floating luminous sparks and light embers in the air");
+      fxList.push("luminous floating glowing sparks, embers, and energetic particles drifting with gentle bokeh");
     }
 
-    let cameraPrompt = "Slow cinematic push-in dolly camera movement creating subtle depth.";
+    let cameraPrompt = "Camera: slow deliberate push-in dolly forward focusing smoothly on the subjects.";
     if (currentCamera === "parallax_drift") {
-      cameraPrompt = "Subtle 3D parallax floating camera drift highlighting background layers.";
+      cameraPrompt = "Camera: subtle multi-plane floating parallax drift revealing dimensional depth between foreground subjects and background layers.";
     } else if (currentCamera === "pan_horizontal") {
-      cameraPrompt = "Slow smooth horizontal cinematic tracking pan.";
+      cameraPrompt = "Camera: steady horizontal cinematic tracking pan with buttery smooth motion.";
     } else if (currentCamera === "static") {
-      cameraPrompt = "Static locked-off camera with dynamic living atmosphere and lighting.";
+      cameraPrompt = "Camera: locked-off tripod perspective letting the dynamic environment, light, and atmosphere breathe.";
     }
 
     const detail = motionDetailInput ? motionDetailInput.value.trim() : "";
 
-    let finalCompiled = `Cinematic 2.5D motion design animation of the exact original visuel. ${charPrompt} `;
+    let finalCompiled = `Cinematic 2.5D broadcast motion design animation of the exact original visuel. ${charPrompt} `;
     if (fxList.length > 0) {
-      finalCompiled += `Dynamic environmental motion: ${fxList.join(", ")}. `;
+      finalCompiled += `Dynamic environmental physics: ${fxList.join(", ")}. `;
     }
-    finalCompiled += `${cameraPrompt} Broadcast motion poster quality. `;
+    finalCompiled += `${cameraPrompt} Highest broadcast production quality, perfectly smooth 60fps feel. `;
     if (detail) {
-      finalCompiled += `Additional styling: ${detail}.`;
+      finalCompiled += `Director instruction: ${detail}.`;
     }
     return finalCompiled;
   }
@@ -851,6 +916,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cinemaPromptInput) cinemaPromptInput.value = s.cinemaPrompt || "";
 
     updateGenerateButtonLabels();
+    updateMotionLiveDirectives();
   }
 
   // Écouteur pour le bouton de reprise d'image de la scène précédente
@@ -1546,18 +1612,69 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderHistory(items) {
     historyGrid.innerHTML = "";
-    items.forEach(item => {
-      const card = document.createElement("div");
-      card.className = "video-card-thumb group";
-      card.innerHTML = `
-        <video src="${item.video_url}" muted preload="metadata" onmouseover="this.play()" onmouseout="this.pause()"></video>
-        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-2 opacity-90 group-hover:opacity-100 transition-opacity">
-          <span class="text-[10px] font-mono text-slate-300 truncate w-full">${item.filename}</span>
+    if (!items || items.length === 0) {
+      historyGrid.innerHTML = `
+        <div class="col-span-full py-8 text-center text-slate-500 text-xs">
+          Aucune vidéo générée pour le moment.
         </div>
       `;
+      return;
+    }
+
+    items.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "video-card-thumb group relative rounded-xl overflow-hidden border border-brand-border bg-slate-950 aspect-video cursor-pointer hover:border-brand-cyan/80 transition-all shadow-md hover:shadow-brand-cyan/20";
+      
+      const thumbUrl = item.thumbnail_url || item.video_url;
+      const displayTitle = item.title || item.filename;
+      const durationSec = item.seconds ? `${parseFloat(item.seconds).toFixed(1)}s` : "";
+
+      card.innerHTML = `
+        <!-- Miniature JPEG nette instantanée -->
+        <img src="${thumbUrl}" alt="${displayTitle}" class="thumb-preview w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy">
+        
+        <!-- Vidéo MP4 survol -->
+        <video src="${item.video_url}" muted loop playsinline preload="none" class="hover-video hidden absolute inset-0 w-full h-full object-cover"></video>
+        
+        <!-- Badge durée -->
+        ${durationSec ? `<div class="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-black/75 backdrop-blur-sm text-[9px] font-mono text-white font-semibold border border-white/10 shadow-sm">${durationSec}</div>` : ""}
+
+        <!-- Bouton lecture central -->
+        <div class="play-indicator absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity group-hover:opacity-0">
+          <div class="w-7 h-7 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white text-[10px] shadow-lg">
+            ▶
+          </div>
+        </div>
+
+        <!-- Voile dégradé et titre lisible -->
+        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex items-end p-2 opacity-95 group-hover:opacity-100 transition-opacity">
+          <span class="text-[10px] font-medium text-slate-200 truncate w-full group-hover:text-brand-cyan transition-colors" title="${item.filename}">
+            ${displayTitle}
+          </span>
+        </div>
+      `;
+
+      const videoEl = card.querySelector(".hover-video");
+
+      card.addEventListener("mouseenter", () => {
+        if (videoEl) {
+          videoEl.classList.remove("hidden");
+          videoEl.play().catch(() => {});
+        }
+      });
+
+      card.addEventListener("mouseleave", () => {
+        if (videoEl) {
+          videoEl.pause();
+          videoEl.currentTime = 0;
+          videoEl.classList.add("hidden");
+        }
+      });
+
       card.addEventListener("click", () => {
         showCompletedVideo(item.video_url, item.filename);
       });
+
       historyGrid.appendChild(card);
     });
   }

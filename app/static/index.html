@@ -346,6 +346,19 @@
             </div>
             <input type="text" id="motionDetailInput" placeholder="Ex: reflets dorés chauds, fumée orange subtile en arrière-plan..." class="w-full rounded-xl bg-slate-900/80 border border-brand-border/80 focus:border-brand-purple text-xs text-slate-100 p-2.5 placeholder:text-slate-500 outline-none transition-all">
           </div>
+
+          <!-- 5. Directives Actives transmises à l'IA en temps réel -->
+          <div class="p-3 rounded-xl bg-slate-900/90 border border-brand-cyan/25 space-y-2 shadow-inner">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-brand-cyan flex items-center gap-1.5 uppercase tracking-wider">
+                <span class="inline-block animate-pulse text-xs">⚡</span> Directives transmises au moteur IA
+              </span>
+              <span class="text-[9px] px-2 py-0.5 rounded-full bg-brand-cyan/15 text-brand-cyan font-mono font-semibold border border-brand-cyan/30">100% Fidèle</span>
+            </div>
+            <div id="motionLiveDirectives" class="flex flex-wrap gap-1.5 text-[11px]">
+              <!-- Injecté en direct par JavaScript -->
+            </div>
+          </div>
         </div>
 
         <!-- PANNEAU 2 : MODE CINÉMATIQUE LIBRE (Pour créer un film avec libertés) -->

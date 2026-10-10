@@ -286,29 +286,90 @@ async def stream_task_progress(video_id: str, model: str = "studio-v2.0"):
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
+def ensure_video_thumbnail(mp4_path: Path) -> Optional[str]:
+    """
+    Extrait automatiquement la première image d'une vidéo MP4 via OpenCV
+    pour fournir une miniature JPEG instantanée dans l'interface.
+    """
+    if not mp4_path.exists():
+        return None
+    thumb_path = mp4_path.with_name(f"{mp4_path.stem}.thumb.jpg")
+    if thumb_path.exists() and thumb_path.stat().st_size > 0:
+        return f"/outputs/{thumb_path.name}"
+
+    try:
+        import cv2
+        cap = cv2.VideoCapture(str(mp4_path))
+        ret = False
+        frame = None
+        # Avancer légèrement pour éviter une éventuelle première frame noire
+        for _ in range(3):
+            r, f = cap.read()
+            if r and f is not None:
+                ret, frame = r, f
+        if not ret or frame is None:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, frame = cap.read()
+        cap.release()
+
+        if ret and frame is not None:
+            cv2.imwrite(str(thumb_path), frame, [int(cv2.IMWRITE_JPEG_QUALITY), 88])
+            return f"/outputs/{thumb_path.name}"
+    except Exception as e:
+        logger.warning(f"Impossible d'extraire la miniature de {mp4_path.name} : {e}")
+
+    return None
+
+
 @app.get("/api/history")
 async def get_history():
     """
-    Retourne la liste des vidéos générées enregistrées localement dans outputs/.
+    Retourne la liste complète des vidéos enregistrées dans outputs/,
+    avec leurs miniatures JPEG auto-générées pour un affichage immédiat.
     """
     items: List[Dict[str, Any]] = []
     
-    for meta_file in sorted(OUTPUTS_DIR.glob("*.json"), key=os.path.getmtime, reverse=True):
+    # Parcourt tous les fichiers .mp4 existants dans outputs/
+    mp4_files = sorted(OUTPUTS_DIR.glob("*.mp4"), key=os.path.getmtime, reverse=True)
+    
+    for mp4_file in mp4_files:
         try:
-            with open(meta_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                video_name = data.get("local_filename")
-                if video_name and (OUTPUTS_DIR / video_name).exists():
-                    items.append({
-                        "id": data.get("video_id") or data.get("id"),
-                        "video_url": f"/outputs/{video_name}",
-                        "filename": video_name,
-                        "saved_at": data.get("saved_at"),
-                        "model": data.get("model"),
-                        "seconds": data.get("seconds"),
-                        "size": data.get("size")
-                    })
-        except Exception:
+            meta_file = mp4_file.with_suffix(".json")
+            data: Dict[str, Any] = {}
+            if meta_file.exists():
+                try:
+                    with open(meta_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                except Exception:
+                    pass
+
+            thumb_url = ensure_video_thumbnail(mp4_file)
+            
+            # Formater un titre propre et lisible
+            clean_name = mp4_file.stem
+            if clean_name.startswith("video_"):
+                clean_name = clean_name[6:]
+            # Nettoyer les hashes longs (ex: video_1790435334_video_bGl0...)
+            parts = clean_name.split("_")
+            if len(parts) > 1 and parts[0].isdigit():
+                clean_name = " ".join(parts[1:])
+            if len(clean_name) > 30:
+                clean_name = clean_name[:28] + "…"
+
+            items.append({
+                "id": data.get("video_id") or data.get("id") or mp4_file.stem,
+                "video_url": f"/outputs/{mp4_file.name}",
+                "thumbnail_url": thumb_url or f"/outputs/{mp4_file.name}",
+                "filename": mp4_file.name,
+                "title": clean_name or mp4_file.name,
+                "saved_at": data.get("saved_at") or int(mp4_file.stat().st_mtime),
+                "model": data.get("model") or "studio-v2.0",
+                "seconds": data.get("seconds") or "5",
+                "size": data.get("size") or "720P",
+                "prompt": data.get("prompt") or data.get("request_params", {}).get("prompt", "")
+            })
+        except Exception as e:
+            logger.warning(f"Erreur lecture item {mp4_file.name}: {e}")
             continue
             
     return {"success": True, "history": items}
